@@ -38,7 +38,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         ))}
       </nav>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="by-status">
           <h2 id="by-status" className="section-title">
             {m.dashboard.byStatus}
@@ -77,7 +77,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   style={{ height: `${(w.done / maxWeek) * 100}%`, minHeight: w.done ? 4 : 1, opacity: w.done ? 1 : 0.25 }}
                   aria-hidden
                 />
-                <span className="text-[11px] whitespace-nowrap text-ink-3">
+                <span className="text-center text-[11px] leading-tight text-ink-3 sm:whitespace-nowrap">
                   <span className="sr-only">{i.fmt(m.dashboard.weekOf, { date: i.day(w.week) })}: </span>
                   <span aria-hidden>{i.day(w.week)}</span>
                 </span>

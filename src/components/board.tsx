@@ -236,7 +236,7 @@ export function Board({
           value={filters.text}
           onChange={(e) => setFilters((f) => ({ ...f, text: e.target.value }))}
         />
-        <div className="flex -space-x-1" role="group" aria-label={m.task.assignees}>
+        <div className="flex gap-0.5" role="group" aria-label={m.task.assignees}>
           {people.slice(0, 8).map((p) => {
             const on = filters.people.includes(p.id);
             return (
@@ -376,8 +376,8 @@ function ColumnView({ column, name, ids, total, filtered, children }: { column: 
   return (
     <section
       aria-label={name}
-      className={`flex w-[85vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-lg border sm:w-72 ${
-        over ? "border-warn-line bg-warn-soft" : "border-transparent bg-surface-2"
+      className={`flex w-[85vw] max-w-[20rem] shrink-0 snap-start flex-col rounded-lg border sm:w-72 xl:w-auto xl:min-w-60 xl:flex-1 ${
+        over ? "border-warn-line bg-warn-soft/60" : "border-transparent bg-surface-2"
       } ${isOver ? "ring-2 ring-brand/50" : ""}`}
     >
       <header className="flex items-center gap-2 px-3 pt-3 pb-2">
@@ -504,7 +504,7 @@ function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done:
           </span>
         )}
         <span className="ml-auto">
-          <AvatarStack people={assignees} size={22} />
+          <AvatarStack people={assignees} size={24} />
         </span>
       </div>
     </div>

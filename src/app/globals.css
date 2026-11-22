@@ -9,7 +9,7 @@
   --line: #d3dbd6;
   --ink: #17211d;
   --ink-2: #44524c;
-  --ink-3: #5f6d67;
+  --ink-3: #5b6963; /* AA (4.5:1) on brand-soft, the lightest tint it sits on */
   --brand: #0f6b57;
   --brand-hover: #0b5646;
   --brand-ink: #ffffff;
@@ -86,7 +86,7 @@
   body {
     background: var(--bg);
     font-feature-settings: "ss01", "tnum";
-    hyphens: auto;
+    /* No hyphens: auto. Task titles are Turkish whatever the UI language, and English rules split them wrongly ("karak-ter"). */
     overflow-wrap: anywhere;
   }
 

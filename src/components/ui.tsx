@@ -35,7 +35,7 @@ export function AvatarStack({ people, max = 3, size = 24 }: { people: { id: stri
   if (!people.length) return null;
   const shown = people.slice(0, max);
   return (
-    <span className="flex -space-x-1.5" aria-label={people.map((p) => p.name).join(", ")} role="img">
+    <span className="flex -space-x-1" aria-label={people.map((p) => p.name).join(", ")} role="img">
       {shown.map((p) => (
         <Avatar key={p.id} id={p.id} name={p.name} size={size} title="" />
       ))}
@@ -122,7 +122,7 @@ export function TaskLine({
     >
       <PriorityIcon priority={t.priority} label={i.m.priority[t.priority as "medium"]} />
       {showProject && <span className="shrink-0 text-xs font-semibold text-ink-3 tabular-nums">{t.key}</span>}
-      <span className="min-w-0 flex-1 truncate text-sm text-ink group-hover:underline">{t.title}</span>
+      <span className="min-w-0 flex-1 text-sm text-ink group-hover:underline max-sm:line-clamp-2 sm:truncate">{t.title}</span>
       {t.columnKey !== undefined && t.category === "doing" && (
         <span className="hidden shrink-0 text-xs text-ink-3 sm:inline">{i.columnName({ name: t.columnName ?? null, defaultKey: t.columnKey ?? null })}</span>
       )}
