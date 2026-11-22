@@ -1,9 +1,8 @@
 "use client";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useOptimistic, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useEffect, useOptimistic, useRef, useState } from "react";
 import { Copy, Trash2, UserPlus, X } from "lucide-react";
 import {
   addChecklistItemAction,
@@ -18,7 +17,7 @@ import {
   updateTaskAction,
 } from "@/app/actions";
 import { fold } from "@/lib/fold";
-import { isInternalHref } from "@/lib/links";
+import { handleOf } from "@/lib/links";
 import { useI18n } from "@/lib/i18n/client";
 import type { TaskDetail } from "@/server/tasks";
 import { activityText } from "./activity";
@@ -26,42 +25,12 @@ import { SprintOptions } from "./backlog";
 import { CloseButton, useRun, useToast } from "./client";
 import { Avatar, PriorityIcon } from "./ui";
 
-export type TaskPerms = { assignSelf: boolean; assignOthers: boolean; comment: boolean; delete: boolean; create: boolean };
 type Person = TaskDetail["people"][number];
 
-const handleOf = (email: string) => email.split("@")[0].toLowerCase();
+export type TaskPerms = { assignSelf: boolean; assignOthers: boolean; comment: boolean; delete: boolean; create: boolean };
 
-/** Markdown without raw HTML (react-markdown escapes it); @handles become profile links. */
-function Markdown({ text, people }: { text: string; people: Person[] }) {
-  const withMentions = useMemo(
-    () =>
-      text.replace(/(^|[^\w.])@([\w.-]*\w)/g, (all, pre: string, h: string) => {
-        const p = people.find((x) => handleOf(x.email) === h.toLowerCase());
-        return p ? `${pre}[@${p.name.replace(/[\\[\]()*_`]/g, "\\$&")}](/team/${p.id})` : all;
-      }),
-    [text, people],
-  );
-  return (
-    <div className="prose-pano">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) =>
-            isInternalHref(href) ? (
-              <Link href={href}>{children}</Link>
-            ) : (
-              <a href={href} target="_blank" rel="noopener noreferrer nofollow">
-                {children}
-              </a>
-            ),
-          img: ({ alt }) => <span>{alt}</span>,
-        }}
-      >
-        {withMentions}
-      </ReactMarkdown>
-    </div>
-  );
-}
+// react-markdown and remark-gfm are a third of the board's JavaScript; load them when a task opens.
+const Markdown = dynamic(() => import("./markdown"), { loading: () => <div className="prose-pano min-h-5" aria-busy="true" /> });
 
 function SideField({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (

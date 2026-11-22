@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, transaction, schema as s, type Tx } from "@/db";
 import { fail } from "@/lib/errors";
 import { fold } from "@/lib/fold";
+import { handleOf } from "@/lib/links";
 import { parse } from "./account";
 import { audit } from "./admin";
 import { can, getProject, need, projectPeople, visibleProjectIds, type Ctx } from "./ctx";
@@ -322,7 +323,6 @@ export async function deleteChecklistItem(ctx: Ctx, input: unknown) {
 }
 
 /** @handle = the part of a colleague's email before the @. */
-export const handleOf = (email: string) => email.split("@")[0].toLowerCase();
 
 export async function addComment(ctx: Ctx, input: unknown) {
   need(ctx, "comments.create");

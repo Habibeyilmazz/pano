@@ -3,7 +3,7 @@ import { ProfileForm } from "@/components/forms";
 import { PageHeader } from "@/components/ui";
 import { getI18n } from "@/lib/i18n/server";
 import { requireCtx } from "@/lib/session";
-import { handleOf } from "@/server/tasks";
+import { handleOf } from "@/lib/links";
 
 export async function generateMetadata() {
   return { title: (await getI18n()).m.settings.title };
