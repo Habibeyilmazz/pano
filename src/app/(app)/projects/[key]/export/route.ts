@@ -5,7 +5,7 @@ import { AppError } from "@/lib/errors";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ key: string }> }) {
   const ctx = await getCtx();
-  if (!ctx) return new Response("Unauthorized", { status: 401 });
+  if (!ctx || ctx.mustChangePassword) return new Response("Unauthorized", { status: 401 });
   const { key } = await params;
   const i = await getI18n();
   try {

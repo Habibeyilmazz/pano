@@ -1,6 +1,6 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, transaction, schema as s, type Tx } from "@/db";
 import { fail } from "@/lib/errors";
@@ -57,6 +57,7 @@ export async function createSession(userId: string, tx?: Tx) {
   const db = tx ?? (await getDb());
   const token = newToken();
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
+  await db.delete(s.sessions).where(and(eq(s.sessions.userId, userId), lt(s.sessions.expiresAt, new Date())));
   await db.insert(s.sessions).values({ id: sha256(token), userId, expiresAt });
   return { token, expiresAt };
 }

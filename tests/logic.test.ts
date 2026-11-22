@@ -89,6 +89,17 @@ describe("aggregates on the board and roles", () => {
   });
 });
 
+describe("copying a task", () => {
+  it("copies fields and an unticked checklist, not assignees", async () => {
+    const { taskId } = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: "Şablon", priority: "high", labels: ["süreç"], assigneeIds: [C.ids.member] });
+    await tasks.addChecklistItem(C.ctx.admin, { taskId, text: "adım" });
+    const copy = await tasks.copyTask(C.ctx.admin, { taskId });
+    const d = await tasks.getTaskDetail(C.ctx.admin, copy.key);
+    expect(d.task).toMatchObject({ title: "Kopya: Şablon", priority: "high", labels: ["süreç"], assigneeIds: [] });
+    expect(d.checklist.map((c) => [c.text, c.done])).toEqual([["adım", false]]);
+  });
+});
+
 describe("mentions and notifications", () => {
   it("notifies mentioned and assigned people, not the actor", async () => {
     const handle = C.ctx.member.email.split("@")[0];

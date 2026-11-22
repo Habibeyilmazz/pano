@@ -223,20 +223,22 @@ export async function copyTask(ctx: Ctx, input: unknown) {
   const db = await getDb();
   const items = await db.select().from(s.checklistItems).where(eq(s.checklistItems.taskId, task.id)).orderBy(asc(s.checklistItems.position));
   const prefix = ctx.locale === "tr" ? "Kopya: " : "Copy of ";
-  const created = await createTask(ctx, {
-    projectId: task.projectId,
-    columnId: task.columnId,
-    title: (prefix + task.title).slice(0, 200),
-    description: task.description,
-    priority: task.priority,
-    estimate: task.estimate,
-    labels: task.labels,
+  return transaction(async (tx) => {
+    const created = await createTask(ctx, {
+      projectId: task.projectId,
+      columnId: task.columnId,
+      title: (prefix + task.title).slice(0, 200),
+      description: task.description,
+      priority: task.priority,
+      estimate: task.estimate,
+      labels: task.labels,
+    });
+    if (items.length)
+      await tx.insert(s.checklistItems).values(
+        items.map((i) => ({ workspaceId: ctx.workspaceId, taskId: created.taskId, text: i.text, position: i.position })),
+      );
+    return created;
   });
-  if (items.length)
-    await db.insert(s.checklistItems).values(
-      items.map((i) => ({ workspaceId: ctx.workspaceId, taskId: created.taskId, text: i.text, position: i.position })),
-    );
-  return created;
 }
 
 const assignSchema = z.object({ taskId: uuid, userId: uuid });
