@@ -89,6 +89,9 @@ async function setCredential(tx: Tx, userId: string, cred: z.infer<typeof creden
     await tx
       .update(s.users)
       .set({
+        // A reset must also kill the old password, or whoever knows it can still sign in.
+        passwordHash: null,
+        mustChangePassword: false,
         inviteTokenHash: sha256(token),
         inviteExpiresAt: new Date(Date.now() + INVITE_DAYS * 864e5),
       })

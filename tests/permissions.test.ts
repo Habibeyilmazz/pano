@@ -160,4 +160,11 @@ describe("user lifecycle", () => {
     await account.changePassword(ctx, { current: "GeciciParola9", password: "KendiParolam7" });
     expect((await ctxOf(userId)).mustChangePassword).toBe(false);
   });
+  it("a reset by link revokes the old password at once", async () => {
+    const email = `member2-${C.tag}@x.test`;
+    const { inviteToken } = await admin.resetPassword(C.ctx.admin, { userId: C.ids.member2, mode: "invite" });
+    await expectCode(account.login({ email, password: PW }), "bad_credentials");
+    await account.acceptInvite({ token: inviteToken!, password: PW + "x" });
+    await account.login({ email, password: PW + "x" });
+  });
 });
