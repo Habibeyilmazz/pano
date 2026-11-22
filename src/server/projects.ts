@@ -182,7 +182,7 @@ export async function deleteColumn(ctx: Ctx, input: unknown) {
 export async function getBoard(ctx: Ctx, key: string) {
   const project = await getProject(ctx, { key });
   const db = await getDb();
-  const [cols, rows, people, sprints] = await Promise.all([
+  const [cols, rows, people, sprints, everyone] = await Promise.all([
     projectColumns(project.id),
     db
       .select({
@@ -210,9 +210,11 @@ export async function getBoard(ctx: Ctx, key: string) {
       .orderBy(asc(s.tasks.position), asc(s.tasks.number)),
     projectPeople(ctx, project.id),
     projectSprints(project.id),
+    // Names for cards whose assignee has left the project or the company; `people` is who can be assigned.
+    db.select({ id: s.users.id, name: s.users.name }).from(s.users).where(eq(s.users.workspaceId, ctx.workspaceId)),
   ]);
   const tasks = rows.map((t) => ({ ...t, key: `${project.key}-${t.number}` }));
-  return { project, columns: cols, tasks, people, sprints };
+  return { project, columns: cols, tasks, people, sprints, everyone };
 }
 
 export type Board = Awaited<ReturnType<typeof getBoard>>;

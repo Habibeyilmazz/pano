@@ -372,7 +372,7 @@ export function Board({
                       done={doneCols.has(c.id)}
                       draggable={canEdit(t)}
                       href={openHref(t.key)}
-                      people={people}
+                      people={board.everyone}
                       canAssignSelf={perms.assignSelf && !t.assigneeIds.includes(me)}
                       onAssignSelf={() => run(() => assignTaskAction({ taskId: t.id, userId: me }))}
                     />
@@ -382,7 +382,7 @@ export function Board({
             ))}
           </div>
           <DragOverlay dropAnimation={null}>
-            {activeTask ? <CardBody task={activeTask} done={false} people={people} lifted /> : null}
+            {activeTask ? <CardBody task={activeTask} done={false} people={board.everyone} lifted /> : null}
           </DragOverlay>
         </DndContext>
       )}
@@ -584,7 +584,7 @@ function ListView({ board, visible, openHref }: { board: BoardData; visible: Boa
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-ink-2">{i.columnName(col)}</td>
                 <td className="px-3 py-2">
-                  <AvatarStack people={t.assigneeIds.map((id) => board.people.find((p) => p.id === id) ?? { id, name: m.common.unknownUser })} size={22} />
+                  <AvatarStack people={t.assigneeIds.map((id) => board.everyone.find((p) => p.id === id) ?? { id, name: m.common.unknownUser })} size={22} />
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap">{t.dueDate ? <DueBadge ymd={t.dueDate} done={done.has(t.columnId)} i={i} /> : null}</td>
                 <td className="px-3 py-2 text-right tabular-nums">{t.estimate != null ? i.num(t.estimate) : ""}</td>

@@ -72,6 +72,34 @@ describe("Turkish and Unicode text", () => {
   });
 });
 
+describe("people who leave", () => {
+  it("deactivating someone hands their open tasks back to the team; done work keeps their name", async () => {
+    const { userId } = await admin.createUser(C.ctx.admin, {
+      name: "Ayrılan Kişi",
+      email: `leaver-${C.tag}@x.test`,
+      roleId: C.roleId("member"),
+      locale: "tr",
+      mode: "password",
+      password: "Parola12345",
+    });
+    const open = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: "Açık iş", assigneeIds: [userId, C.ids.member2] });
+    const solo = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: "Tek başına", assigneeIds: [userId] });
+    const done = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, columnId: C.cols[3].id, title: "Bitmiş", assigneeIds: [userId] });
+    await admin.updateUser(C.ctx.admin, { userId, active: false });
+
+    const assignees = async (key: string) => (await tasks.getTaskDetail(C.ctx.admin, key)).task.assigneeIds;
+    expect(await assignees(open.key)).toEqual([C.ids.member2]);
+    expect(await assignees(solo.key)).toEqual([]);
+    expect(await assignees(done.key)).toEqual([userId]);
+    const history = (await tasks.getTaskDetail(C.ctx.admin, solo.key)).activity;
+    expect(history.some((a) => a.type === "unassigned" && (a.data as { userId: string }).userId === userId)).toBe(true);
+    // The board can still name the person on finished cards.
+    const board = await projects.getBoard(C.ctx.admin, "WEB");
+    expect(board.everyone.find((p) => p.id === userId)?.name).toBe("Ayrılan Kişi");
+    expect(board.people.some((p) => p.id === userId)).toBe(false);
+  });
+});
+
 describe("time zone (Europe/Istanbul)", () => {
   it("today() switches at Istanbul midnight, not UTC midnight", () => {
     expect(today(0, new Date("2026-11-22T20:59:00Z"))).toBe("2026-11-22");

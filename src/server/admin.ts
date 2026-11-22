@@ -160,11 +160,28 @@ export async function updateUser(ctx: Ctx, input: unknown) {
     if (!Object.keys(patch).length) return;
     await tx.update(s.users).set(patch).where(eq(s.users.id, target.u.id));
     if (newRole || patch.active === false) await deleteUserSessions(target.u.id, tx);
+    if (patch.active === false) await releaseOpenTasks(tx, ctx, target.u.id);
     if (newRole)
       await audit(tx, ctx, "user.role_changed", { userId: target.u.id, name: target.u.name, from: target.roleName, to: newRole.name });
     if (patch.active !== undefined)
       await audit(tx, ctx, patch.active ? "user.activated" : "user.deactivated", { userId: target.u.id, name: target.u.name });
   });
+}
+
+/** Someone who leaves would otherwise hold open work nobody sees: it drops out of Team and is not
+ * "unassigned" either. Done tasks keep their name; each task's history records the change. */
+async function releaseOpenTasks(tx: Tx, ctx: Ctx, userId: string) {
+  const open = await tx
+    .select({ taskId: s.tasks.id, projectId: s.tasks.projectId })
+    .from(s.taskAssignees)
+    .innerJoin(s.tasks, eq(s.tasks.id, s.taskAssignees.taskId))
+    .innerJoin(s.columns, eq(s.columns.id, s.tasks.columnId))
+    .where(and(eq(s.taskAssignees.userId, userId), eq(s.taskAssignees.workspaceId, ctx.workspaceId), ne(s.columns.category, "done")));
+  if (!open.length) return;
+  await tx.delete(s.taskAssignees).where(and(eq(s.taskAssignees.userId, userId), inArray(s.taskAssignees.taskId, open.map((o) => o.taskId))));
+  await tx
+    .insert(s.activities)
+    .values(open.map((o) => ({ workspaceId: ctx.workspaceId, projectId: o.projectId, taskId: o.taskId, actorId: ctx.userId, type: "unassigned", data: { userId } })));
 }
 
 export async function resetPassword(ctx: Ctx, input: unknown) {

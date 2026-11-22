@@ -255,7 +255,7 @@ function TaskRow({ task: t, board, open, editable, done, href }: { task: BoardTa
         {t.title}
       </Link>
       <span className={`tag ${done ? "bg-ok-soft text-ok" : "bg-surface-2 text-ink-2"}`}>{col ? i.columnName(col) : ""}</span>
-      <AvatarStack people={t.assigneeIds.map((id) => board.people.find((p) => p.id === id) ?? { id, name: m.common.unknownUser })} size={22} />
+      <AvatarStack people={t.assigneeIds.map((id) => board.everyone.find((p) => p.id === id) ?? { id, name: m.common.unknownUser })} size={22} />
       <span className="w-8 text-right text-xs font-semibold tabular-nums text-ink-2" title={m.task.estimate}>
         {t.estimate != null ? i.num(t.estimate) : ""}
       </span>
