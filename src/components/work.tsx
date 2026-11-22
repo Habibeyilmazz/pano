@@ -1,6 +1,6 @@
 // Shared building blocks for My work, Team and profile pages (server components).
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, CircleDot, Circle } from "lucide-react";
+import { CheckCircle2, CircleDot, Circle } from "lucide-react";
 import type { I18n } from "@/lib/i18n";
 import type { WorkItem } from "@/server/views";
 import { DueBadge, PriorityIcon, TaskLine, taskHref } from "./ui";
@@ -35,31 +35,31 @@ export function WorkSection({ kind, title, items, empty, i }: { kind: keyof type
   );
 }
 
-/** A compact card used in the Team lanes. */
+/** One task in a Team lane: done items are a single line, open ones show key and due date above the title. */
 export function LaneCard({ t, i, tone }: { t: WorkItem; i: I18n; tone: "now" | "next" | "done" }) {
-  const base =
-    tone === "now"
-      ? "border-brand/40 bg-brand-soft"
-      : tone === "done"
-        ? "border-transparent bg-transparent text-ink-2"
-        : "border-line bg-surface";
+  if (tone === "done")
+    return (
+      <Link href={taskHref(t.key)} title={`${t.key} ${t.title}`} className="flex items-center gap-1.5 rounded px-1 py-0.5 text-[13px] text-ink-2 hover:bg-surface-2 hover:text-ink">
+        <CheckCircle2 size={14} className="shrink-0 text-ok" aria-hidden />
+        <span className="sr-only">{t.key}</span>
+        <span className="truncate">{t.title}</span>
+      </Link>
+    );
   return (
-    <Link href={taskHref(t.key)} className={`block rounded-md border px-2.5 py-1.5 hover:border-brand ${base}`}>
+    <Link
+      href={taskHref(t.key)}
+      className={`block rounded-md border px-2.5 py-1.5 hover:border-brand ${tone === "now" ? "border-line border-l-[3px] border-l-brand bg-surface shadow-card" : "border-dashed border-line"}`}
+    >
       <span className="flex items-center gap-1.5">
-        {tone === "done" ? (
-          <CheckCircle2 size={14} className="shrink-0 text-ok" aria-hidden />
-        ) : (
-          <PriorityIcon priority={t.priority} label={i.m.priority[t.priority as "medium"]} size={14} />
-        )}
+        <PriorityIcon priority={t.priority} label={i.m.priority[t.priority as "medium"]} size={14} />
         <span className="text-[11px] font-semibold text-ink-3 tabular-nums">{t.key}</span>
-        {t.overdue && <AlertTriangle size={13} className="text-danger" aria-label={i.m.task.overdue} />}
+        {t.dueDate && (
+          <span className="ml-auto text-[11px]">
+            <DueBadge ymd={t.dueDate} i={i} />
+          </span>
+        )}
       </span>
-      <span className={`mt-0.5 line-clamp-2 text-[13px] leading-snug ${tone === "done" ? "line-through decoration-ink-3/50" : "text-ink"}`}>{t.title}</span>
-      {tone !== "done" && t.dueDate && (
-        <span className="mt-1 block">
-          <DueBadge ymd={t.dueDate} i={i} />
-        </span>
-      )}
+      <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-ink">{t.title}</span>
     </Link>
   );
 }
@@ -67,7 +67,7 @@ export function LaneCard({ t, i, tone }: { t: WorkItem; i: I18n; tone: "now" | "
 export function Lane({ items, max, tone, empty, i, more }: { items: WorkItem[]; max: number; tone: "now" | "next" | "done"; empty: string; i: I18n; more: string }) {
   if (!items.length) return <p className="py-1.5 text-[13px] text-ink-3">{empty}</p>;
   return (
-    <div className="space-y-1.5">
+    <div className={tone === "done" ? "space-y-0.5" : "space-y-1.5"}>
       {items.slice(0, max).map((t) => (
         <LaneCard key={t.taskId} t={t} i={i} tone={tone} />
       ))}

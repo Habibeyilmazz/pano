@@ -46,7 +46,7 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
             {rows.map((p) => {
               const more = `/team/${p.id}${q}`;
               return (
-                <li key={p.id} className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(12rem,16rem)_repeat(3,minmax(0,1fr))] lg:gap-4">
+                <li key={p.id} className="grid gap-2.5 px-4 py-3.5 lg:grid-cols-[minmax(12rem,16rem)_repeat(3,minmax(0,1fr))] lg:gap-4">
                   <div className="flex items-start gap-3">
                     <Avatar id={p.id} name={p.name} size={36} title="" />
                     <div className="min-w-0">
@@ -67,26 +67,31 @@ export default async function TeamPage({ searchParams }: { searchParams: Promise
                       </p>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="mb-1 text-xs font-semibold text-ink-2 lg:sr-only">{m.team.now}</h3>
+                  <LaneCell title={m.team.now} empty={!p.doing.length}>
                     <Lane items={p.doing} max={3} tone="now" empty={m.team.idle} i={i} more={more} />
-                  </div>
-                  <div>
-                    <h3 className="mb-1 text-xs font-semibold text-ink-2 lg:sr-only">{m.team.next}</h3>
+                  </LaneCell>
+                  <LaneCell title={m.team.next} empty={!p.todo.length}>
                     <Lane items={p.todo} max={2} tone="next" empty={m.team.nothingNext} i={i} more={more} />
-                  </div>
-                  <div>
-                    <h3 className="mb-1 text-xs font-semibold text-ink-2 lg:sr-only">
-                      {m.team.doneWeek} {p.done.length > 0 && <span className="tabular-nums">({p.done.length})</span>}
-                    </h3>
-                    <Lane items={p.done} max={3} tone="done" empty={m.team.nothingDone} i={i} more={more} />
-                  </div>
+                  </LaneCell>
+                  <LaneCell title={`${m.team.doneWeek}${p.done.length ? ` (${p.done.length})` : ""}`} empty={!p.done.length}>
+                    <Lane items={p.done} max={4} tone="done" empty={m.team.nothingDone} i={i} more={more} />
+                  </LaneCell>
                 </li>
               );
             })}
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+/** On phones an empty lane is one line ("Next: nothing queued"); on wide screens the column header names it. */
+function LaneCell({ title, empty, children }: { title: string; empty: boolean; children: React.ReactNode }) {
+  return (
+    <div className={empty ? "max-lg:flex max-lg:items-baseline max-lg:gap-2" : undefined}>
+      <h3 className="mb-1 shrink-0 text-xs font-semibold text-ink-2 lg:sr-only">{title}</h3>
+      {children}
     </div>
   );
 }
