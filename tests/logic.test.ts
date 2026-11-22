@@ -167,6 +167,10 @@ describe("sign-in protection", () => {
     await expectCode(account.signupCompany({ company: "Spam", name: "a", email: "spam@x.test", password: PW, locale: "tr" }, "198.51.100.1"), "locked");
     await expectCode(account.login({ email: "nobody@x.test", password: "x" }, "198.51.100.1"), "bad_credentials");
   });
+  it("limits guesses of the current password when changing it", async () => {
+    for (let i = 0; i < 10; i++) await expectCode(account.changePassword(C.ctx.viewer, { current: "yanlis", password: "Yepyeni12345" }), "bad_credentials");
+    await expectCode(account.changePassword(C.ctx.viewer, { current: PW, password: "Yepyeni12345" }), "locked");
+  });
   it("rejects weak passwords at sign-up", async () => {
     await expectCode(account.signupCompany({ company: "Zayıf", name: "a", email: "weak@x.test", password: "sadeceharf", locale: "tr" }), "weak_password");
     await expectCode(account.signupCompany({ company: "Zayıf", name: "a", email: "weak@x.test", password: "123456789012", locale: "tr" }), "weak_password");

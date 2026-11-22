@@ -219,6 +219,8 @@ export async function acceptInvite(input: unknown) {
 
 export async function changePassword(ctx: Ctx, input: unknown) {
   const data = parse(z.object({ current: z.string().max(200), password: passwordSchema }), input);
+  // A stolen session must not become an unlimited oracle for the current password.
+  if (ipLimited(`password:${ctx.userId}`, 10)) fail("locked");
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.id, ctx.userId));
   if (!(await verifyPassword(data.current, u.passwordHash))) fail("bad_credentials");
