@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "playwright/test";
+import { devices, expect, test, type Page } from "playwright/test";
 
 const stamp = Date.now().toString(36);
 const adminEmail = `admin-${stamp}@e2e.test`;
@@ -50,6 +50,20 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   await dialog.getByLabel("Parola", { exact: true }).fill("GeciciParola1");
   await dialog.getByRole("button", { name: "Kullanıcıyı oluştur" }).click();
   await expect(page.getByRole("cell", { name: /Şükrü Çağlar/ })).toBeVisible();
+  // 3b. An invite link for an English-speaking colleague opens in English.
+  await page.getByRole("button", { name: "Kullanıcı ekle" }).click();
+  await dialog.getByLabel("Ad soyad").fill("Iris Brown");
+  await dialog.getByLabel("E-posta").fill(`iris-${stamp}@e2e.test`);
+  await dialog.getByLabel("Dil").selectOption("en");
+  await dialog.getByRole("button", { name: "Kullanıcıyı oluştur" }).click();
+  const inviteUrl = await page.getByRole("textbox", { name: "URL" }).inputValue();
+  await page.keyboard.press("Escape");
+  const ctxInvite = await browser.newContext();
+  const pInvite = await ctxInvite.newPage();
+  await pInvite.goto(inviteUrl);
+  await expect(pInvite.getByRole("heading", { name: "Join Deneme Teknoloji A.Ş. on pano" })).toBeVisible();
+  await ctxInvite.close();
+
   await page.getByRole("link", { name: "Denetim kaydı" }).click();
   await expect(page.getByText("Kullanıcı ekledi: Şükrü Çağlar (Geliştirici)")).toBeVisible();
 
@@ -114,6 +128,28 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   await page.getByRole("link", { name: "Ekip" }).first().click();
   const row = page.getByRole("listitem").filter({ hasText: "Şükrü Çağlar" });
   await expect(row.getByText("İade akışını yaz")).toBeVisible();
+
+  // 7b. A WIP limit turns the column amber; on a phone the board scrolls inside itself and the page
+  // stays as wide as the screen (an escaping screen-reader label once zoomed the whole page out).
+  await page.goto("/projects/API", { waitUntil: "networkidle" }); // "c" needs the hydrated board
+  for (const title of ["Fatura şablonu", "Kur farkı raporu"]) {
+    await page.keyboard.press("c");
+    await page.getByLabel("Başlık").fill(title);
+    await page.getByLabel("Sütun").selectOption({ label: "Devam ediyor" });
+    await page.getByRole("button", { name: "Görevi oluştur" }).click();
+    await expect(target.getByText(title)).toBeVisible();
+  }
+  await page.goto("/projects/API/settings");
+  const wipRow = page.locator("li", { has: page.getByLabel("İş sınırı") }).nth(1);
+  await wipRow.getByLabel("İş sınırı").fill("1");
+  await wipRow.getByRole("button", { name: "Kaydet" }).click();
+  await expect(wipRow.getByLabel("İş sınırı")).toHaveValue("1");
+  const phone = await browser.newContext({ ...devices["Pixel 7"], storageState: await page.context().storageState() });
+  const pPhone = await phone.newPage();
+  await pPhone.goto("/projects/API");
+  await expect(pPhone.getByRole("region", { name: "Devam ediyor" }).getByTitle("İş sınırı aşıldı: 2/1")).toBeVisible();
+  expect(await pPhone.evaluate(() => [innerWidth, document.documentElement.scrollWidth])).toEqual([412, 412]);
+  await phone.close();
   expect(cspErrors).toEqual([]);
   expect(dialogs).toBe(0);
 
@@ -166,7 +202,7 @@ test("another company cannot see the first company's board", async ({ browser })
   await ctx.close();
 });
 
-test("anonymous visitors reach only the sign-in pages", async ({ page }) => {
+test("anonymous visitors reach only the sign-in pages", async ({ page, browser }) => {
   for (const url of ["/my-work", "/projects/API", "/admin/users", "/team"]) {
     await page.goto(url);
     await expect(page).toHaveURL(/\/login$/);
@@ -174,4 +210,14 @@ test("anonymous visitors reach only the sign-in pages", async ({ page }) => {
   expect((await page.request.get("/projects/API/export")).status()).toBe(401);
   await page.goto("/invite/not-a-real-token-123");
   await expect(page.getByRole("link", { name: "Giriş sayfasına git" })).toBeVisible();
+
+  // Submitted before the JavaScript loads, the sign-in form posts: the password never lands in the URL.
+  const noJs = await browser.newContext({ javaScriptEnabled: false });
+  const p = await noJs.newPage();
+  await p.goto("/login");
+  await p.getByLabel("E-posta").fill(adminEmail);
+  await p.getByLabel("Parola", { exact: true }).fill(PW);
+  await Promise.all([p.waitForNavigation(), p.getByRole("button", { name: "Giriş yap" }).click()]);
+  expect(p.url()).not.toContain("password");
+  await noJs.close();
 });

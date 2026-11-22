@@ -22,7 +22,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <>
       <h1 className="text-2xl font-semibold tracking-tight">{i.fmt(i.m.auth.inviteTitle, { company: user.ws })}</h1>
       <p className="mt-1 mb-6 text-sm text-ink-2">{i.fmt(i.m.auth.inviteLead, { name: user.name })}</p>
-      <InviteForm token={token} email={user.email} />
+      <InviteForm token={token} email={user.email} userLocale={user.locale} />
     </>
   );
 }
