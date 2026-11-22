@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useOptimistic, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Copy, Trash2, UserPlus, X } from "lucide-react";
@@ -108,7 +108,11 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
 
   const column = detail.columns.find((c) => c.id === t.columnId);
   const assignable = people.filter((p) => detail.assignable.includes(p.id) && !t.assigneeIds.includes(p.id));
-  const doneItems = detail.checklist.filter((c) => c.done).length;
+  // Ticks show at once and roll back if the server refuses.
+  const [checklist, tick] = useOptimistic(detail.checklist, (list, p: { id: string; done: boolean }) =>
+    list.map((c) => (c.id === p.id ? { ...c, done: p.done } : c)),
+  );
+  const doneItems = checklist.filter((c) => c.done).length;
 
   return (
     <dialog
@@ -198,22 +202,25 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
               <section aria-labelledby="checklist-h">
                 <h3 id="checklist-h" className="mb-2 flex items-center gap-2 section-title">
                   {m.task.checklist}
-                  {detail.checklist.length > 0 && <span className="text-xs font-medium text-ink-3">{fmt(m.task.checklistProgress, { done: doneItems, total: detail.checklist.length })}</span>}
+                  {checklist.length > 0 && <span className="text-xs font-medium text-ink-3">{fmt(m.task.checklistProgress, { done: doneItems, total: checklist.length })}</span>}
                 </h3>
-                {detail.checklist.length > 0 && (
+                {checklist.length > 0 && (
                   <div className="mb-2 h-1.5 rounded-full bg-surface-2" aria-hidden>
-                    <div className="h-1.5 rounded-full bg-ok/70" style={{ width: `${(doneItems / detail.checklist.length) * 100}%` }} />
+                    <div className="h-1.5 rounded-full bg-ok/70" style={{ width: `${(doneItems / checklist.length) * 100}%` }} />
                   </div>
                 )}
                 <ul className="space-y-0.5">
-                  {detail.checklist.map((c) => (
+                  {checklist.map((c) => (
                     <li key={c.id} className="group flex items-center gap-2 rounded-md px-1 py-1 hover:bg-surface-2">
                       <input
                         type="checkbox"
                         id={`ci-${c.id}`}
                         checked={c.done}
-                        disabled={!editable || pending}
-                        onChange={(e) => run(() => toggleChecklistItemAction({ itemId: c.id, done: e.target.checked }))}
+                        disabled={!editable}
+                        onChange={(e) => {
+                          const done = e.target.checked;
+                          run(() => (tick({ id: c.id, done }), toggleChecklistItemAction({ itemId: c.id, done })));
+                        }}
                         className="size-4 accent-[var(--brand)]"
                       />
                       <label htmlFor={`ci-${c.id}`} className={`flex-1 text-sm ${c.done ? "text-ink-3 line-through" : ""}`}>
