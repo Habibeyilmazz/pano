@@ -221,7 +221,7 @@ export function Board({
       </div>
 
       <div
-        className="-mx-4 mb-4 flex items-center gap-2 overflow-x-auto px-4 py-0.5 *:shrink-0 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+        className="relative -mx-4 mb-4 flex items-center gap-2 overflow-x-auto px-4 py-0.5 *:shrink-0 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
         role="group"
         aria-label={m.board.filters}
       >
@@ -324,7 +324,7 @@ export function Board({
           }}
           accessibility={{ announcements, screenReaderInstructions: { draggable: m.board.dragHint } }}
         >
-          <div className="-mx-4 flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:snap-none md:px-8">
+          <div className="relative -mx-4 flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:snap-none md:px-8">
             {board.columns.map((c) => (
               <ColumnView key={c.id} column={c} name={i.columnName(c)} ids={items[c.id] ?? []} total={board.tasks.filter((t) => t.columnId === c.id).length} filtered={filtered}>
                 {(items[c.id] ?? []).map((id) => {
@@ -519,7 +519,7 @@ function ListView({ board, visible, openHref }: { board: BoardData; visible: Boa
   const done = new Set(board.columns.filter((c) => c.category === "done").map((c) => c.id));
   if (!rows.length) return <EmptyState title={m.board.noMatches} />;
   return (
-    <div className="card overflow-x-auto">
+    <div className="card relative overflow-x-auto">
       <table className="w-full min-w-[44rem] text-sm">
         <thead className="border-b border-line bg-surface-2 text-left text-xs text-ink-2">
           <tr>
