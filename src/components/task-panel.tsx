@@ -35,7 +35,7 @@ function Markdown({ text, people }: { text: string; people: Person[] }) {
     () =>
       text.replace(/(^|[^\w.])@([\w.-]+)/g, (all, pre: string, h: string) => {
         const p = people.find((x) => handleOf(x.email) === h.toLowerCase());
-        return p ? `${pre}[@${p.name}](/team/${p.id})` : all;
+        return p ? `${pre}[@${p.name.replace(/[\\[\]()*_`]/g, "\\$&")}](/team/${p.id})` : all;
       }),
     [text, people],
   );
@@ -135,7 +135,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
                   }
                 }}
               >
-                <Copy size={15} aria-hidden /> <span className="hidden sm:inline">{m.task.copy}</span>
+                <Copy size={15} aria-hidden /> <span className="max-sm:sr-only">{m.task.copy}</span>
               </button>
             )}
             {perms.delete && (
@@ -148,7 +148,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
                   if (r?.ok) close();
                 }}
               >
-                <Trash2 size={15} aria-hidden /> <span className="hidden sm:inline">{m.common.delete}</span>
+                <Trash2 size={15} aria-hidden /> <span className="max-sm:sr-only">{m.common.delete}</span>
               </button>
             )}
             <CloseButton onClick={close} label={m.task.close} />

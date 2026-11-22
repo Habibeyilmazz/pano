@@ -16,7 +16,7 @@ export default async function MyWorkPage() {
   const { m } = i;
   const empty = !w.doing.length && !w.todo.length && !w.done.length;
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-4xl">
       <PageHeader
         title={m.myWork.title}
         lead={m.myWork.lead}
@@ -33,7 +33,7 @@ export default async function MyWorkPage() {
           </Link>
         </EmptyState>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="space-y-4">
           <WorkSection kind="doing" title={m.myWork.doing} items={w.doing} empty={m.myWork.emptyDoing} i={i} />
           <WorkSection kind="todo" title={m.myWork.todo} items={w.todo} empty={m.myWork.emptyTodo} i={i} />
           <WorkSection kind="done" title={m.myWork.done} items={w.done} empty={m.myWork.emptyDone} i={i} />

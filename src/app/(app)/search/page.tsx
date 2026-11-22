@@ -21,7 +21,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           {m.nav.search}
         </label>
         <input id="q" name="q" type="search" defaultValue={q} className="input" placeholder={m.nav.searchPlaceholder} />
-        <button className="btn btn-primary">{m.nav.search}</button>
+        <button className="btn btn-primary shrink-0">{m.search.title}</button>
       </form>
       {q && !results.length && <EmptyState title={i.fmt(m.search.empty, { q })} lead={m.search.hint} icon={<Search size={28} />} />}
       {results.length > 0 && (
@@ -29,7 +29,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           {results.map((t) => (
             <li key={t.id} className="flex items-center gap-2 pr-2">
               <div className="min-w-0 flex-1">
-                <TaskLine t={t} i={i} />
+                <TaskLine t={{ ...t, columnKey: undefined }} i={i} />
               </div>
               <span className="hidden shrink-0 text-xs text-ink-3 sm:block">{i.columnName({ name: t.columnName, defaultKey: t.columnKey })}</span>
             </li>

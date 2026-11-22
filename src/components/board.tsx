@@ -205,7 +205,7 @@ export function Board({
           </nav>
           <a href={`/projects/${board.project.key}/export`} className="btn btn-ghost" title={m.board.exportCsv} aria-label={m.board.exportCsv}>
             <Download size={16} aria-hidden />
-            <span className="hidden lg:inline">{m.board.exportCsv}</span>
+            <span className="max-lg:sr-only">{m.board.exportCsv}</span>
           </a>
           {perms.manage && (
             <Link href={`/projects/${board.project.key}/settings`} className="btn btn-ghost" title={m.board.projectSettings} aria-label={m.board.projectSettings}>
@@ -463,10 +463,10 @@ function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done:
   const { m } = i;
   const assignees = task.assigneeIds.map((id) => people.find((p) => p.id === id) ?? { id, name: m.common.unknownUser });
   return (
-    <div className={`rounded-md border border-line bg-surface p-2.5 pr-14 shadow-card ${lifted ? "rotate-1 shadow-lift" : "hover:border-ink-3/50"}`}>
-      <p className="text-[11px] font-semibold text-ink-3 tabular-nums">{task.key}</p>
+    <div className={`rounded-md border border-line bg-surface p-2.5 shadow-card ${lifted ? "rotate-1 shadow-lift" : "hover:border-ink-3/50"}`}>
+      <p className="pr-12 text-[11px] font-semibold text-ink-3 tabular-nums">{task.key}</p>
       {href ? (
-        <Link href={href} scroll={false} draggable={false} className="mt-0.5 block text-sm leading-snug font-medium text-ink after:absolute after:inset-0 after:content-[''] hover:underline">
+        <Link href={href} scroll={false} draggable={false} className="mt-0.5 block pr-6 text-sm leading-snug font-medium text-ink after:absolute after:inset-0 after:content-[''] hover:underline">
           {task.title}
         </Link>
       ) : (
@@ -481,7 +481,7 @@ function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done:
           ))}
         </p>
       )}
-      <div className="mt-2 flex items-center gap-2 text-xs text-ink-2">
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs whitespace-nowrap text-ink-2">
         <PriorityIcon priority={task.priority} label={m.priority[task.priority as "medium"]} size={15} />
         {task.dueDate && <DueBadge ymd={task.dueDate} done={done} i={i} />}
         {task.checklistTotal > 0 && (

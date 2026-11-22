@@ -23,7 +23,7 @@ const people = [
   { key: "elif", name: "Elif Çelik", role: "member" },
   { key: "burak", name: "Burak Öztürk", role: "member" },
   { key: "ismail", name: "İsmail Doğan", role: "intern" },
-  { key: "selin", name: "Selin Arslan", role: "viewer" },
+  { key: "selin", name: "Selin Arslan", role: "viewer", locale: "en" },
 ] as const;
 type P = (typeof people)[number]["key"];
 
@@ -113,7 +113,7 @@ async function main() {
       name: p.name,
       email: `${p.key}@ornek.test`,
       roleId: roleId(p.role),
-      locale: "tr",
+      locale: "locale" in p ? p.locale : "tr",
       mode: "password",
       password: DEMO_PASSWORD,
     });
@@ -130,6 +130,8 @@ async function main() {
   for (const def of projectDefs) {
     const { projectId } = await projects.createProject(adminCtx, { key: def.key, name: def.name, description: def.description });
     const cols = await projects.projectColumns(projectId);
+    // A WIP limit on "In progress" so the board shows what an exceeded limit looks like.
+    if (def.key === "WEB") await projects.updateColumn(adminCtx, { columnId: cols[1].id, name: null, category: "doing", wipLimit: 3 });
     for (const sd of def.seeds) {
       const reporter = sd.who[0] === "ismail" ? mehmet : adminCtx;
       const { taskId } = await tasks.createTask(reporter, {

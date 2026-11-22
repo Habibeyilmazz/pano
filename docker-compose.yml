@@ -1,0 +1,33 @@
+# App + Postgres. `docker compose up --build`, then open http://localhost:4500 and create a company.
+# Demo credentials below are for local use only: set POSTGRES_PASSWORD in your environment for anything real.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pano
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pano-local-only}
+      POSTGRES_DB: pano
+    volumes:
+      - pano-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pano -d pano"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://pano:${POSTGRES_PASSWORD:-pano-local-only}@db:5432/pano
+      APP_TZ: Europe/Istanbul
+      # Session cookies are Secure. Browsers accept them on http://localhost; behind plain HTTP on
+      # another host set COOKIE_SECURE=false (better: put HTTPS in front).
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    ports:
+      - "4500:3000"
+
+volumes:
+  pano-db:

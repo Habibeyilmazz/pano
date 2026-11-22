@@ -13,7 +13,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
   const [i, p] = await Promise.all([getI18n(), orNotFound(person(ctx, id))]);
   const { m } = i;
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-4xl">
       <title>{p.user.name}</title>
       <Link href="/team" className="mb-4 inline-flex items-center gap-1 text-sm text-ink-2 hover:text-ink">
         <ArrowLeft size={15} aria-hidden /> {m.team.title}
@@ -38,7 +38,7 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           )}
         </div>
       </div>
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="space-y-4">
         <WorkSection kind="doing" title={m.team.now} items={p.doing} empty={m.team.idle} i={i} />
         <WorkSection kind="todo" title={m.team.next} items={p.todo} empty={m.team.nothingNext} i={i} />
         <WorkSection kind="done" title={m.team.doneWeek} items={p.done} empty={m.team.nothingDone} i={i} />
