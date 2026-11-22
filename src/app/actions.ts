@@ -15,6 +15,7 @@ import { sendAccessLink } from "@/server/mail";
 import type { Ctx } from "@/server/ctx";
 import * as notifications from "@/server/notifications";
 import * as projects from "@/server/projects";
+import * as sprints from "@/server/sprints";
 import * as tasks from "@/server/tasks";
 
 export type Result<T = void> = { ok: true; data: T } | { ok: false; error: ErrorCode };
@@ -151,6 +152,24 @@ export async function moveColumnAction(input: unknown) {
 }
 export async function deleteColumnAction(input: unknown) {
   return run((ctx) => projects.deleteColumn(ctx, input));
+}
+
+// ---- sprints ----
+
+export async function createSprintAction(input: unknown) {
+  return run((ctx) => sprints.createSprint(ctx, input));
+}
+export async function updateSprintAction(input: unknown) {
+  return run((ctx) => sprints.updateSprint(ctx, input));
+}
+export async function startSprintAction(input: unknown) {
+  return run((ctx) => sprints.startSprint(ctx, input));
+}
+export async function completeSprintAction(input: unknown) {
+  return run((ctx) => sprints.completeSprint(ctx, input));
+}
+export async function deleteSprintAction(input: unknown) {
+  return run((ctx) => sprints.deleteSprint(ctx, input));
 }
 
 // ---- tasks ----

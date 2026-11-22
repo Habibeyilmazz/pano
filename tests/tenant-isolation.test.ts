@@ -7,9 +7,10 @@ import * as admin from "@/server/admin";
 import { exportCsv } from "@/server/export";
 import * as notifications from "@/server/notifications";
 import * as projects from "@/server/projects";
+import * as sprints from "@/server/sprints";
 import * as tasks from "@/server/tasks";
 import * as views from "@/server/views";
-import { expectCode, makeCompany, PW } from "./helpers";
+import { expectCode, makeCompany, PW, versionOf } from "./helpers";
 
 // Company B's admin holds every permission, so these tests show that permissions never cross companies.
 let A: Awaited<ReturnType<typeof makeCompany>>;
@@ -17,6 +18,9 @@ let B: Awaited<ReturnType<typeof makeCompany>>;
 let aItemId: string;
 let aCustomRoleId: string;
 let aNotificationId: string;
+let aSprintId: string;
+let aActiveSprintId: string;
+let bSprintId: string;
 
 beforeAll(async () => {
   A = await makeCompany("Alfa A.Ş.");
@@ -26,6 +30,11 @@ beforeAll(async () => {
   aItemId = (await db.select().from(s.checklistItems).where(eq(s.checklistItems.taskId, A.taskId)))[0].id;
   aCustomRoleId = (await admin.createRole(A.ctx.admin, { name: "Özel", permissions: ["tasks.create"] })).roleId;
   aNotificationId = (await notifications.listNotifications(A.ctx.member2))[0].id;
+  aSprintId = (await sprints.createSprint(A.ctx.admin, { projectId: A.projectId })).sprintId;
+  aActiveSprintId = (await sprints.createSprint(A.ctx.admin, { projectId: A.projectId })).sprintId;
+  await sprints.startSprint(A.ctx.admin, { sprintId: aActiveSprintId, startDate: "2026-11-23", endDate: "2026-12-06" });
+  bSprintId = (await sprints.createSprint(B.ctx.admin, { projectId: B.projectId })).sprintId;
+  await sprints.startSprint(B.ctx.admin, { sprintId: bSprintId, startDate: "2026-11-23", endDate: "2026-12-06" });
 });
 
 const b = () => B.ctx.admin;
@@ -105,13 +114,31 @@ const cases: Record<string, () => Promise<void>> = {
   deleteColumn: async () => {
     await expectCode(projects.deleteColumn(b(), { columnId: A.cols[1].id }), "not_found");
   },
+  createSprint: async () => {
+    await expectCode(sprints.createSprint(b(), { projectId: A.projectId }), "not_found");
+  },
+  updateSprint: async () => {
+    await expectCode(sprints.updateSprint(b(), { sprintId: aSprintId, name: "Ele geçirildi" }), "not_found");
+  },
+  startSprint: async () => {
+    await expectCode(sprints.startSprint(b(), { sprintId: aSprintId, startDate: "2026-11-23", endDate: "2026-12-06" }), "not_found");
+  },
+  completeSprint: async () => {
+    await expectCode(sprints.completeSprint(b(), { sprintId: aActiveSprintId }), "not_found");
+    await expectCode(sprints.completeSprint(b(), { sprintId: bSprintId, moveTo: aSprintId }), "not_found");
+  },
+  deleteSprint: async () => {
+    await expectCode(sprints.deleteSprint(b(), { sprintId: aSprintId }), "not_found");
+  },
   createTask: async () => {
     await expectCode(tasks.createTask(b(), { projectId: A.projectId, title: "x" }), "not_found");
+    await expectCode(tasks.createTask(b(), { projectId: B.projectId, title: "x", sprintId: aSprintId }), "not_found");
     await expectCode(tasks.createTask(b(), { projectId: B.projectId, columnId: A.cols[0].id, title: "x" }), "not_found");
     await expectCode(tasks.createTask(b(), { projectId: B.projectId, title: "x", assigneeIds: [A.ids.member] }), "not_found");
   },
   updateTask: async () => {
     await expectCode(tasks.updateTask(b(), { taskId: A.taskId, version: 1, title: "x" }), "not_found");
+    await expectCode(tasks.updateTask(b(), { taskId: B.taskId, version: await versionOf(b(), B.key), sprintId: aSprintId }), "not_found");
   },
   moveTask: async () => {
     await expectCode(tasks.moveTask(b(), { taskId: A.taskId, version: 1, columnId: A.cols[1].id, index: 0 }), "not_found");
@@ -170,6 +197,11 @@ describe("tenant isolation: every server action", () => {
     expect(d.comments).toHaveLength(0);
     expect((await projects.projectColumns(A.projectId)).map((c) => c.name)).toEqual([null, null, null, null]);
     expect((await admin.listUsers(A.ctx.admin)).every((u) => u.active)).toBe(true);
+    const sp = (await projects.getBoard(A.ctx.admin, "WEB")).sprints;
+    expect(sp.map((x) => [x.name, x.state])).toEqual([
+      ["Sprint 1", "planned"],
+      ["Sprint 2", "active"],
+    ]);
   });
 });
 
@@ -180,9 +212,11 @@ describe("tenant isolation: every read used by a page", () => {
     expect(board.project.workspaceId).toBe(B.workspaceId);
     expect(board.tasks.map((t) => t.id)).not.toContain(A.taskId);
     expect(board.people.map((p) => p.id)).not.toContain(A.ids.admin);
+    expect(board.sprints.map((x) => x.id)).toEqual([bSprintId]);
     const detail = await tasks.getTaskDetail(b(), "WEB-1");
     expect(detail.task.id).toBe(B.taskId);
     expect(detail.people.map((p) => p.id)).not.toContain(A.ids.admin);
+    expect(detail.sprints.map((x) => x.id)).toEqual([bSprintId]);
     const csv = await exportCsv(b(), "WEB", () => "", ["k"]);
     expect(csv).not.toContain(A.taskId);
   });

@@ -8,6 +8,7 @@ import { audit } from "./admin";
 import { can, getProject, need, projectPeople, visibleProjectIds, type Ctx } from "./ctx";
 import { notify } from "./notifications";
 import { projectColumns } from "./projects";
+import { assertSprintFor, projectSprints } from "./sprints";
 
 export const PRIORITIES = ["lowest", "low", "medium", "high", "highest"] as const;
 const uuid = z.string().uuid();
@@ -84,6 +85,7 @@ const createSchema = z.object({
   estimate: z.number().min(0).max(1000).nullable().default(null),
   labels: labelsSchema.default([]),
   assigneeIds: z.array(uuid).max(20).default([]),
+  sprintId: uuid.nullable().default(null),
 });
 
 export async function createTask(ctx: Ctx, input: unknown) {
@@ -96,6 +98,7 @@ export async function createTask(ctx: Ctx, input: unknown) {
   const assignees = [...new Set(data.assigneeIds)];
   assignees.forEach((id) => assertCanAssign(ctx, id));
   await assertAssignable(ctx, project.id, assignees);
+  if (data.sprintId) await assertSprintFor(ctx, project.id, data.sprintId);
   return transaction(async (tx) => {
     const [{ seq }] = await tx
       .update(s.projects)
@@ -114,6 +117,7 @@ export async function createTask(ctx: Ctx, input: unknown) {
         projectId: project.id,
         number: seq,
         columnId: col!.id,
+        sprintId: data.sprintId,
         position: (first?.p ?? 1000) - 1000,
         title: data.title,
         description: data.description,
@@ -143,12 +147,14 @@ const updateSchema = z.object({
   dueDate: ymd.nullable().optional(),
   estimate: z.number().min(0).max(1000).nullable().optional(),
   labels: labelsSchema.optional(),
+  sprintId: uuid.nullable().optional(),
 });
 
 export async function updateTask(ctx: Ctx, input: unknown) {
   const { taskId, version, ...patch } = parse(updateSchema, input);
   return transaction(async (tx) => {
     const { task, key } = await loadEditable(ctx, taskId, tx);
+    if (patch.sprintId) await assertSprintFor(ctx, task.projectId, patch.sprintId);
     const merged = { ...task, ...patch };
     const [row] = await tx
       .update(s.tasks)
@@ -223,6 +229,8 @@ export async function copyTask(ctx: Ctx, input: unknown) {
   const db = await getDb();
   const items = await db.select().from(s.checklistItems).where(eq(s.checklistItems.taskId, task.id)).orderBy(asc(s.checklistItems.position));
   const prefix = ctx.locale === "tr" ? "Kopya: " : "Copy of ";
+  // The copy joins the original's sprint unless that sprint is closed.
+  const [sprint] = task.sprintId ? await db.select({ state: s.sprints.state }).from(s.sprints).where(eq(s.sprints.id, task.sprintId)) : [];
   return transaction(async (tx) => {
     const created = await createTask(ctx, {
       projectId: task.projectId,
@@ -232,6 +240,7 @@ export async function copyTask(ctx: Ctx, input: unknown) {
       priority: task.priority,
       estimate: task.estimate,
       labels: task.labels,
+      sprintId: sprint && sprint.state !== "closed" ? task.sprintId : null,
     });
     if (items.length)
       await tx.insert(s.checklistItems).values(
@@ -337,7 +346,7 @@ export async function getTaskDetail(ctx: Ctx, key: string) {
     .where(and(eq(s.tasks.projectId, project.id), eq(s.tasks.number, ref.number), eq(s.tasks.workspaceId, ctx.workspaceId)));
   if (!t) fail("not_found");
   const { assigneeIds } = await loadTask(ctx, t!.id);
-  const [columns, checklist, commentRows, activity, people] = await Promise.all([
+  const [columns, checklist, commentRows, activity, people, sprints] = await Promise.all([
     projectColumns(project.id),
     db.select().from(s.checklistItems).where(eq(s.checklistItems.taskId, t!.id)).orderBy(asc(s.checklistItems.position)),
     db
@@ -348,6 +357,7 @@ export async function getTaskDetail(ctx: Ctx, key: string) {
     db.select().from(s.activities).where(eq(s.activities.taskId, t!.id)).orderBy(desc(s.activities.createdAt)).limit(100),
     // Everyone in the workspace, so history still names people who left the project.
     db.select({ id: s.users.id, name: s.users.name, email: s.users.email, active: s.users.active }).from(s.users).where(eq(s.users.workspaceId, ctx.workspaceId)),
+    projectSprints(project.id),
   ]);
   const assignable = (await projectPeople(ctx, project.id)).map((p) => p.id);
   return {
@@ -358,6 +368,7 @@ export async function getTaskDetail(ctx: Ctx, key: string) {
     comments: commentRows,
     activity,
     people,
+    sprints,
     assignable,
     canEdit: canEditTask(ctx, t!, assigneeIds),
   };

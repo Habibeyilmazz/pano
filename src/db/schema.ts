@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   date,
@@ -115,6 +116,27 @@ export const columns = pgTable("columns", {
   wipLimit: integer(),
 });
 
+export const sprints = pgTable(
+  "sprints",
+  {
+    id: id(),
+    workspaceId: ws(),
+    projectId: uuid()
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    goal: text().notNull().default(""),
+    startDate: date({ mode: "string" }),
+    endDate: date({ mode: "string" }),
+    /** planned | active | closed */
+    state: text().notNull().default("planned"),
+    closedAt: timestamp({ withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  // At most one active sprint per project, enforced by the database too.
+  (t) => [uniqueIndex("sprints_one_active_idx").on(t.projectId).where(sql`state = 'active'`)],
+);
+
 export const tasks = pgTable(
   "tasks",
   {
@@ -127,6 +149,8 @@ export const tasks = pgTable(
     columnId: uuid()
       .notNull()
       .references(() => columns.id),
+    /** null = backlog (or a team that does not use sprints) */
+    sprintId: uuid().references(() => sprints.id, { onDelete: "set null" }),
     position: doublePrecision().notNull(),
     title: text().notNull(),
     description: text().notNull().default(""),
@@ -147,6 +171,7 @@ export const tasks = pgTable(
     uniqueIndex("tasks_project_number_idx").on(t.projectId, t.number),
     index("tasks_ws_idx").on(t.workspaceId),
     index("tasks_column_idx").on(t.columnId),
+    index("tasks_sprint_idx").on(t.sprintId),
   ],
 );
 

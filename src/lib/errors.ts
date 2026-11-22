@@ -14,7 +14,9 @@ export type ErrorCode =
   | "last_admin"
   | "role_in_use"
   | "column_not_empty"
-  | "wip_limit";
+  | "wip_limit"
+  | "sprint_active"
+  | "sprint_state";
 
 export class AppError extends Error {
   constructor(public code: ErrorCode) {

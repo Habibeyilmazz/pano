@@ -4,6 +4,7 @@ import { getDb, transaction, schema as s, type Tx } from "@/db";
 import { fail } from "@/lib/errors";
 import { parse } from "./account";
 import { getProject, need, projectPeople, visibleProjects, type Ctx } from "./ctx";
+import { projectSprints } from "./sprints";
 
 export const DEFAULT_COLUMNS = [
   { defaultKey: "todo", category: "todo" },
@@ -181,13 +182,14 @@ export async function deleteColumn(ctx: Ctx, input: unknown) {
 export async function getBoard(ctx: Ctx, key: string) {
   const project = await getProject(ctx, { key });
   const db = await getDb();
-  const [cols, rows, people] = await Promise.all([
+  const [cols, rows, people, sprints] = await Promise.all([
     projectColumns(project.id),
     db
       .select({
         id: s.tasks.id,
         number: s.tasks.number,
         columnId: s.tasks.columnId,
+        sprintId: s.tasks.sprintId,
         position: s.tasks.position,
         title: s.tasks.title,
         priority: s.tasks.priority,
@@ -207,10 +209,12 @@ export async function getBoard(ctx: Ctx, key: string) {
       .where(and(eq(s.tasks.projectId, project.id), eq(s.tasks.workspaceId, ctx.workspaceId)))
       .orderBy(asc(s.tasks.position)),
     projectPeople(ctx, project.id),
+    projectSprints(project.id),
   ]);
   const tasks = rows.map((t) => ({ ...t, key: `${project.key}-${t.number}` }));
-  return { project, columns: cols, tasks, people };
+  return { project, columns: cols, tasks, people, sprints };
 }
 
 export type Board = Awaited<ReturnType<typeof getBoard>>;
 export type BoardTask = Board["tasks"][number];
+export type Sprint = Board["sprints"][number];

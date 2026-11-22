@@ -28,3 +28,6 @@ export function weekStartInstant(now = new Date()): Date {
   const offset = tzName && tzName !== "GMT" ? tzName.replace("GMT", "") : "+00:00";
   return new Date(`${ymd}T00:00:00${offset}`);
 }
+
+/** Whole days from a to b (YYYY-MM-DD), negative when b is earlier. */
+export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 864e5);
