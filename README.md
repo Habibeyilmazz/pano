@@ -11,13 +11,16 @@
 | ![Team](docs/screenshots/team.png) | ![Task](docs/screenshots/task.png) |
 | **My work** | **Overview dashboard** |
 | ![My work](docs/screenshots/my-work.png) | ![Dashboard](docs/screenshots/dashboard.png) |
-| **English, dark mode (a read-only viewer)** | **Users and roles** |
-| ![Board in English, dark](docs/screenshots/board-dark-en.png) | ![Users](docs/screenshots/users.png) |
+| **Sprint planning (Planlama)** | **Users and roles** |
+| ![Sprint planning](docs/screenshots/backlog.png) | ![Users](docs/screenshots/users.png) |
+| **English, dark mode (a read-only viewer)** | **Team, English, dark** |
+| ![Board in English, dark](docs/screenshots/board-dark-en.png) | ![Team in English, dark](docs/screenshots/team-dark-en.png) |
 
 <p>
   <img src="docs/screenshots/mobile-board.png" width="240" alt="Board on a phone">
   <img src="docs/screenshots/mobile-task.png" width="240" alt="Task on a phone">
   <img src="docs/screenshots/mobile-team.png" width="240" alt="Team on a phone">
+  <img src="docs/screenshots/mobile-backlog.png" width="240" alt="Sprint planning on a phone">
 </p>
 
 All screenshots come from the running app with the demo data (`scripts/screenshots.ts`).
@@ -59,7 +62,7 @@ All demo accounts are fictional and share the password **`PanoDemo2026`** (demo 
 | `ismail@ornek.test` | İsmail Doğan | Custom role "Stajyer" (intern) |
 | `selin@ornek.test` | Selin Arslan | Viewer (İzleyici), interface in English |
 
-The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tasks in Turkish at various states. You can also create your own company at `/signup`.
+The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tasks in Turkish at various states. WEB works in sprints (one completed, one running, one planned); MOB is a plain kanban board. You can also create your own company at `/signup`.
 
 ## What it does
 
@@ -77,6 +80,13 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 - **Assign to me** on the card and in the task panel; assign others from the panel. Moves are optimistic and roll back with a message if the server refuses.
 - **Concurrent edits never silently overwrite each other**: every task change carries the version the user saw; a stale change is rejected and the latest version is loaded.
 - Quick filters: my tasks, unassigned, overdue, due this week, assignee avatars, label, priority and text. A **list view** shows the same filtered tasks as a table.
+
+**Sprints (optional)**
+- A project can work in **sprints**; a team that does not want them never sees them on the board. People who manage projects create sprints (named "Sprint 1", "Sprint 2"… unless you name them), with optional dates and a **sprint goal**.
+- The **Planlama / Backlog** tab lists the running sprint (progress in tasks and points, days left), planned sprints and the **backlog** (open tasks in no sprint). Each task row has a sprint picker, so planning works by keyboard and on a phone; the task panel has the same field, and the change shows in the task's history.
+- **Starting** a sprint (one at a time per project, also enforced by the database) makes the board show only that sprint's tasks, with a strip showing the dates, days left, goal and progress. A picker above the board switches to another sprint, the backlog or all tasks. A task created while the board shows a sprint joins it.
+- **Completing** a sprint keeps its done tasks as its record and moves the unfinished ones to the backlog or to a planned sprint. Completed sprints are listed with what they delivered (tasks and points), which gives the team its velocity. Only planned sprints can be deleted; their tasks return to the backlog.
+- The CSV export has a Sprint column.
 
 **Seeing what everyone is doing**
 - **My work (İşlerim)**: my tasks grouped in progress / to do / recently done, overdue first.
@@ -104,10 +114,10 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 
 ```bash
 npm run dev         # http://localhost:4500 (PGlite in .data/pglite)
-npm test            # vitest: permissions, tenant isolation, business rules (in-memory PGlite)
+npm test            # vitest: permissions, tenant isolation, sprints, business rules (in-memory PGlite)
 npm run typecheck
 npm run lint
-npm run build && npm run e2e   # Playwright journey against a production build on :4501
+npm run build && npm run e2e   # Playwright journeys (main + sprints) against a production build on :4501
 npx tsx scripts/screenshots.ts docs/screenshots   # with a seeded app running on :4500
 ```
 
@@ -149,7 +159,7 @@ Then open `/signup` to create your company (the demo seed is not run in Docker).
 
 Not built yet, in rough priority order:
 - Email delivery for invites, resets and notifications (SMTP behind `src/server/mail.ts`).
-- Sprints / iterations and a backlog with sprint planning.
+- Sprint reports: a burndown chart and sprint progress on the Overview page (today the Planlama tab shows progress and what each completed sprint delivered).
 - Task templates (copying a task covers the simplest case today).
 - Editing and deleting comments; attachments.
 - Realtime board updates (today the board refreshes after your own actions and on navigation; stale edits are caught by versioning).

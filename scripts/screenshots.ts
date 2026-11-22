@@ -36,6 +36,7 @@ async function main() {
   await shot(page, "board", "/projects/WEB");
   await shot(page, "task", "/projects/WEB?task=WEB-1");
   await shot(page, "list", "/projects/WEB/list");
+  await shot(page, "backlog", "/projects/WEB/backlog");
   await shot(page, "team", "/team");
   const team = await page.locator("a[href^='/team/']").first().getAttribute("href");
   await shot(page, "person", team!);
@@ -60,6 +61,7 @@ async function main() {
   await shot(sp, "board-dark-en", "/projects/MOB");
   await shot(sp, "team-dark-en", "/team");
   await shot(sp, "task-dark-en", "/projects/MOB?task=MOB-3");
+  await shot(sp, "backlog-dark-en", "/projects/WEB/backlog");
 
   const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, locale: "tr-TR" });
   const pp = await phone.newPage();
@@ -68,6 +70,7 @@ async function main() {
   await shot(pp, "mobile-board", "/projects/MOB");
   await shot(pp, "mobile-task", "/projects/MOB?task=MOB-3");
   await shot(pp, "mobile-team", "/team");
+  await shot(pp, "mobile-backlog", "/projects/WEB/backlog");
   await browser.close();
 }
 

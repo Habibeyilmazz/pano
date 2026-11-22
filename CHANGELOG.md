@@ -5,6 +5,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (feature round: sprints)
+
+- **Sprints**, the most-wanted missing piece for a team lead (on the extras list, first buildable Roadmap item). Optional per project: a board without sprints looks and works exactly as before.
+  - New **Planlama / Backlog** tab next to Board and List: the running sprint with progress (tasks and points) and days left, planned sprints, the backlog (open tasks in no sprint) and completed sprints with what they delivered. Each row has a sprint picker (works by keyboard and on a phone; no drag needed).
+  - Managers (`projects.manage`) create, edit, start, complete and delete sprints. One active sprint per project (service check plus a partial unique index). Completing keeps done tasks in the sprint and moves unfinished ones to the backlog or a planned sprint. Only planned sprints can be deleted; their tasks return to the backlog.
+  - The board starts on the running sprint, with a strip showing dates, days left, goal and progress; a picker switches to another sprint, the backlog or all tasks. Column counts and WIP limits count the shown sprint. New tasks created while a sprint is shown join it; a copied task stays in its original's sprint unless that one is completed.
+  - The task panel has a Sprint field (anyone who can edit the task); changes appear in the task history ("sprinti “Sprint 3” yaptı"). CSV export has a Sprint column.
+  - Demo seed: WEB has a completed Sprint 1, a running Sprint 2 and a planned Sprint 3; MOB stays plain kanban.
+  - Tests: `tests/sprints.test.ts` (permissions per role, one active sprint, complete/move rules, closed sprints refuse tasks, delete rules, cross-project sprint ids, copy, CSV, day countdown), tenant-isolation cases for the five new actions and for sprint ids passed to task actions, and `e2e/sprints.spec.ts` (create, plan, start, board scope, create-in-sprint, complete, velocity line).
+- `scripts/screenshots.ts` also captures the planning tab (desktop, phone, English dark); README shows it.
+
+### Feature round notes (for the next agent)
+
+- Data: `sprints` table (`state` planned | active | closed) and `tasks.sprint_id` (null = backlog, `on delete set null`), migration `drizzle/0001_sprints.sql`. Rules live in `src/server/sprints.ts`; `assertSprintFor` guards every task write that sets a sprint. Moving a task between sprints goes through `updateTask` (versioned like any field); completing a sprint does not bump task versions on purpose, so it never makes someone's open edit fail.
+- UI: `src/components/backlog.tsx` (planning tab, sprint strip, dialogs, `SprintOptions`), wired into `board.tsx` (scope picker) and `task-panel.tsx`.
+- An existing local database gets the new table on start but no demo sprints (the seed only runs on an empty database): delete `.data/pglite` to see them.
+- Verified by using the app as a manager (create, plan, start, complete, board scope, task field and history) and as a member and an English viewer (read-only, no pickers), at 1440px and 390px (no horizontal overflow). Not built: burndown chart, sprint data on the Overview page, drag from backlog to sprint (the picker covers it).
+- Gaps reported by the previous round, rechecked: touch long-press drag is still unverified on a real phone; commits still carry no Co-Authored-By line because a system instruction in these sessions forbids attribution lines; the one-off 160-shot design script stays out of the repo (`scripts/screenshots.ts` is the maintained one); the first visit to the sign-in page is Turkish by design.
+
 ### Fixed (design round)
 
 - Sign-in, sign-up and invite pages over plain HTTP on a non-localhost address (with the default `COOKIE_SECURE=true`) bounced back without a word; they now explain that the browser will not keep the cookie and what to do. Detection is the browser's own `isSecureContext`. Checked by opening the app via the machine's LAN IP.
