@@ -71,14 +71,14 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 - Admins add users (name, email, role, language) and either get a one-time **invite link** (valid 7 days) or set a **temporary password** that must be changed at first sign-in. No email is sent in v0.1; the link is shown once to copy. `src/server/mail.ts` is the hook for SMTP.
 - Built-in roles: **Admin**, **Manager**, **Member**, **Viewer** (read-only). Admins create **custom roles** by ticking permissions: manage users, manage roles, manage projects/boards, create tasks, edit any task, delete tasks, assign self, assign others, comment, view reports.
 - Projects can be **restricted** to selected people (admins and managers always see every project).
-- Deactivating a user ends their sessions immediately and keeps their history. Admins can reset passwords (new link or temporary password). The **audit log** records user created, role changed, access turned off/on, password reset, role created/changed/deleted and task deleted.
+- Deactivating a user ends their sessions immediately and keeps their history. Their open tasks become unassigned (each task's history says so), so the work shows up under the *Unassigned* filter instead of hiding behind someone who left; finished tasks keep their name. Admins can reset passwords (new link or temporary password). The **audit log** records user created, role changed, access turned off/on, password reset, role created/changed/deleted and task deleted.
 
 **The board**
 - One kanban board per project. Default columns: Yapılacak / To do, Devam ediyor / In progress, İncelemede / In review, Tamamlandı / Done. Managers rename, add, reorder and delete (empty) columns, set each column's type (to do / in progress / done) and an optional **WIP limit**: the column turns amber when exceeded.
 - Tasks have a key (e.g. `WEB-42`), title, Markdown description (raw HTML is never rendered), one or more assignees, reporter, priority with icons, labels, due date, estimate (points), a checklist with progress, comments with **@mentions** (suggestions while typing) and a full history.
 - **Drag and drop** between and within columns with the mouse, a long press on touch screens, or the keyboard (focus a card's handle, Space, arrow keys, Space). The task panel's Status field is another keyboard-friendly way to move a task.
 - **Assign to me** on the card and in the task panel; assign others from the panel. Moves are optimistic and roll back with a message if the server refuses.
-- **Concurrent edits never silently overwrite each other**: every task change carries the version the user saw; a stale change is rejected and the latest version is loaded.
+- **Concurrent edits never silently overwrite each other**: every task change carries the version the user saw; a stale change is rejected and the latest version is loaded. A refused description edit stays open in the editor, so nothing typed is lost.
 - Quick filters: my tasks, unassigned, overdue, due this week, assignee avatars, label, priority and text. A **list view** shows the same filtered tasks as a table.
 
 **Sprints (optional)**
@@ -114,10 +114,10 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 
 ```bash
 npm run dev         # http://localhost:4500 (PGlite in .data/pglite)
-npm test            # vitest: permissions, tenant isolation, sprints, business rules (in-memory PGlite)
+npm test            # vitest: permissions, tenant isolation, sprints, business rules, reliability (in-memory PGlite)
 npm run typecheck
 npm run lint
-npm run build && npm run e2e   # Playwright journeys (main + sprints) against a production build on :4501
+npm run build && npm run e2e   # Playwright journeys (main, sprints, two people on one card, touch drag) against a production build on :4501
 npx tsx scripts/screenshots.ts docs/screenshots   # with a seeded app running on :4500
 ```
 

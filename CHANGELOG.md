@@ -5,6 +5,29 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed (reliability round)
+
+Each bug below was reproduced by a failing test first (`tests/reliability.test.ts`, `e2e/concurrency.spec.ts`), then fixed.
+
+- **Card order broke after ~50 drops into the same slot.** Positions are float midpoints; once the gap ran out of precision a dropped card landed in the wrong place (the test saw it at drop 54). `moveTask` now re-spaces the column (one `UPDATE … row_number()`) when there is no room left, which also untangles equal positions left by two simultaneous moves. The board breaks position ties by task number.
+- **Labels were lower-cased the Turkish way**, so `API` became `apı` and `CI/CD` became `cı/cd`, and `API` plus `api` were stored as two labels. Labels are now kept as written and duplicates are folded Turkish-aware (`İzmir` = `izmir`). The board's label chips and filter match by the same fold, so `Ofis` and `ofis` on different tasks are one chip. Existing (lower-case) labels are untouched.
+- **Deactivated people kept their open tasks**, which then hid: Team lists only active people, the *Unassigned* filter skipped them, and cards showed "Bilinmeyen kişi". Deactivation now unassigns them from open tasks (an "unassigned" entry in each task's history, by the admin); done tasks keep them. Board and backlog cards name people who left (`getBoard` returns `everyone` for name lookup; `people` stays the assignable list). Reactivating does not give the tasks back.
+- **A refused description edit lost the draft.** When two people edited the description, the later save got the conflict message but the editor closed and its text was gone (bad with long descriptions). The editor now stays open with the draft until a save succeeds.
+- **Done-per-week chart (Overview) missed tasks finished between 00:00 and 03:00 on the first week's Monday** in Istanbul: the query cut at UTC midnight. It now reads a day earlier and lets the existing per-week bucketing (in the app time zone) drop the extra.
+- **Capped lists showed the cap as the count.** Overview's overdue list said "(50)" and search said "50 results" when there were more. Both now show the real total (`count(*) over ()`) and a "showing the first 50" note.
+
+### Tests added (reliability round)
+
+- `tests/reliability.test.ts` (9 tests): the fixes above, plus regression guards that already passed: two simultaneous moves of one card (one wins, one conflict, one history entry), a column with tasks refuses deletion and keeps them, a 20,000-character description with combining marks and emoji is stored intact and found by Turkish-folded search (the zod limit counts code points; the textarea's `maxLength` counts UTF-16 units, so it is the stricter one), and `today()` turns over at Istanbul midnight, not UTC.
+- `e2e/concurrency.spec.ts`: two tabs move the same card (the stale one gets the conflict toast and the card's real column), two tabs edit the description (the later one keeps its draft), and a touch long-press drag on an emulated Pixel 7 via CDP touch events, which survives a reload. Checked that the drag test fails without the long press.
+- `e2e/journey.spec.ts`: the invited person (now a Viewer) sets a password through the link and lands signed in, the link refuses a second use, and the viewer sees the board read-only (no New task, no drag handles, `c` does nothing, no Edit or Assign to me in the task panel).
+
+### Reliability round notes (for the next agent)
+
+- Looked at and left alone: deleting a column checks for tasks outside a transaction, but the `tasks.column_id` foreign key has no cascade, so a task moved in at that moment makes the delete fail rather than lose the task. Users cannot be deleted, only deactivated. Due dates are calendar dates (`YYYY-MM-DD`) shown with `timeZone: "UTC"`, so they never shift.
+- Not changed: someone removed from a restricted project keeps their assignments there (same hiding problem as deactivation, rarer); the board loads every task of a project in one query (fine for hundreds, not tested at tens of thousands); search shows the first 50 matches with no paging.
+- Previous round's gaps, rechecked: touch drag is now covered in emulation, still not on a real phone. An existing `.data/pglite` still gets no demo sprints (delete it to reseed). No burndown chart or sprint data on Overview (feature work, not this round). Commits still carry no Co-Authored-By line: a system instruction in these sessions forbids attribution lines.
+
 ### Added (feature round: sprints)
 
 - **Sprints**, the most-wanted missing piece for a team lead (on the extras list, first buildable Roadmap item). Optional per project: a board without sprints looks and works exactly as before.
