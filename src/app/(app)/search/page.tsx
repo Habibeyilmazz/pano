@@ -15,7 +15,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { m } = i;
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title={q ? i.fmt(m.search.resultsFor, { q }) : m.search.title} lead={q ? i.plural(m.search.results, results.length) : m.search.hint} />
+      <PageHeader title={q ? i.fmt(m.search.resultsFor, { q }) : m.search.title} lead={q ? i.plural(m.search.results, results[0]?.total ?? 0) : m.search.hint} />
       <form action="/search" role="search" className="mb-6 flex gap-2">
         <label htmlFor="q" className="sr-only">
           {m.nav.search}
@@ -36,6 +36,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           ))}
         </ul>
       )}
+      {(results[0]?.total ?? 0) > results.length && <p className="mt-3 text-sm text-ink-3">{i.fmt(m.common.shownFirst, { n: i.num(results.length) })}</p>}
     </div>
   );
 }

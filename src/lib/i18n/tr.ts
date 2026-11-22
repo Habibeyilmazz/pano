@@ -20,6 +20,7 @@ export const tr = {
     you: "siz",
     deactivated: "pasif",
     unknownUser: "Bilinmeyen kişi",
+    shownFirst: "İlk {n} tanesi gösteriliyor.",
     language: "Dil",
     languages: { tr: "Türkçe", en: "English" },
     retry: "Tekrar dene",

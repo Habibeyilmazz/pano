@@ -88,7 +88,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
         <section className="card p-5" aria-labelledby="overdue">
           <h2 id="overdue" className="section-title">
-            {m.dashboard.overdue} <span className="text-ink-3 tabular-nums">({d.overdue.length})</span>
+            {m.dashboard.overdue} <span className="text-ink-3 tabular-nums">({i.num(d.overdueTotal)})</span>
           </h2>
           {d.overdue.length ? (
             <ul className="mt-3 divide-y divide-line">
@@ -109,6 +109,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             </ul>
           ) : (
             <p className="mt-3 text-sm text-ink-3">{m.dashboard.noOverdue}</p>
+          )}
+          {d.overdueTotal > d.overdue.length && (
+            <p className="mt-2 text-xs text-ink-3">{i.fmt(m.common.shownFirst, { n: i.num(d.overdue.length) })}</p>
           )}
         </section>
 

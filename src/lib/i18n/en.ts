@@ -21,6 +21,7 @@ export const en: typeof tr = {
     you: "you",
     deactivated: "deactivated",
     unknownUser: "Unknown person",
+    shownFirst: "Showing the first {n}.",
     language: "Language",
     languages: { tr: "Türkçe", en: "English" },
     retry: "Try again",

@@ -106,5 +106,27 @@ describe("time zone (Europe/Istanbul)", () => {
     expect(today(0, new Date("2026-11-22T21:00:00Z"))).toBe("2026-11-23");
     expect(today(1, new Date("2026-11-22T21:30:00Z"))).toBe("2026-11-24");
   });
+  it("the done-per-week chart counts a task finished just after Monday midnight in Istanbul", async () => {
+    const { taskId } = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, columnId: C.cols[3].id, title: "Gece yarısı" });
+    const firstWeek = addDays(weekStart(today()), -7 * 7);
+    const before = (await views.dashboard(C.ctx.manager)).perWeek[0];
+    expect(before.week).toBe(firstWeek);
+    // 00:30 Monday in Istanbul is 21:30 Sunday in UTC.
+    const db = await getDb();
+    await db.update(s.tasks).set({ completedAt: new Date(`${firstWeek}T00:30:00+03:00`) }).where(eq(s.tasks.id, taskId));
+    expect((await views.dashboard(C.ctx.manager)).perWeek[0].done).toBe(before.done + 1);
+  });
 });
 
+describe("many tasks", () => {
+  it("dashboard and search report the real totals even when the list is capped", async () => {
+    for (let i = 0; i < 55; i++)
+      await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: `Gecikmiş yığın ${i}`, dueDate: today(-2) });
+    const dash = await views.dashboard(C.ctx.manager);
+    expect(dash.overdue.length).toBe(50);
+    expect(dash.overdueTotal).toBeGreaterThanOrEqual(55);
+    const found = await tasks.searchTasks(C.ctx.admin, "gecikmiş yığın");
+    expect(found.length).toBe(50);
+    expect(found[0].total).toBe(55);
+  });
+});

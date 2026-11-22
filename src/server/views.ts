@@ -162,7 +162,8 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
           inArray(s.tasks.projectId, ids),
           eq(s.columns.category, "done"),
           isNotNull(s.tasks.completedAt),
-          gte(s.tasks.completedAt, new Date(`${firstWeek}T00:00:00Z`)),
+          // A day early so the app time zone's Monday 00:00 is inside; the loop below drops the extra.
+          gte(s.tasks.completedAt, new Date(Date.parse(`${firstWeek}T00:00:00Z`) - 864e5)),
         ),
       ),
     team(ctx, projectId),
@@ -175,6 +176,7 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
         priority: s.tasks.priority,
         dueDate: s.tasks.dueDate,
         assignees: sql<string[]>`coalesce((select array_agg(u.name order by u.name) from ${s.taskAssignees} a join ${s.users} u on u.id = a.user_id where a.task_id = ${s.tasks}.id), '{}')`,
+        total: sql<number>`(count(*) over ())::int`,
       })
       .from(s.tasks)
       .innerJoin(s.projects, eq(s.projects.id, s.tasks.projectId))
@@ -197,5 +199,5 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
     const slot = perWeek.find((p) => p.week === w);
     if (slot) slot.done++;
   }
-  return { byStatus, perWeek, overdue, workload: workload.filter((w) => w.doing.length + w.todo.length > 0) };
+  return { byStatus, perWeek, overdue, overdueTotal: overdue[0]?.total ?? 0, workload: workload.filter((w) => w.doing.length + w.todo.length > 0) };
 }

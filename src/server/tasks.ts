@@ -403,6 +403,8 @@ export async function searchTasks(ctx: Ctx, q: string) {
       category: s.columns.category,
       columnName: s.columns.name,
       columnKey: s.columns.defaultKey,
+      /** All matches; only the first 50 are returned. */
+      total: sql<number>`(count(*) over ())::int`,
     })
     .from(s.tasks)
     .innerJoin(s.projects, eq(s.projects.id, s.tasks.projectId))
