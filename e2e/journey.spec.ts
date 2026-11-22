@@ -15,8 +15,15 @@ async function signIn(page: Page, email: string, password: string) {
 test.describe.configure({ mode: "serial" });
 
 test("company sign-up, team setup, board work and the people views", async ({ page, browser }) => {
+  // The app must run under its Content-Security-Policy without a single violation.
+  const cspErrors: string[] = [];
+  page.on("console", (m) => m.text().includes("Content Security Policy") && cspErrors.push(m.text()));
+  let dialogs = 0;
+  page.on("dialog", (d) => void (dialogs++, d.dismiss()));
+
   // 1. A company signs up; its first user is the admin.
-  await page.goto("/signup");
+  const res = await page.goto("/signup");
+  expect(res!.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
   await page.getByLabel("Şirket adı").fill("Deneme Teknoloji A.Ş.");
   await page.getByLabel("Adınız soyadınız").fill("Gül Işık");
   await page.getByLabel("E-posta").fill(adminEmail);
@@ -94,12 +101,21 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   await panel.getByLabel(/Yorum yazın/).fill(`@${memberEmail.split("@")[0]} bakabilir misin?`);
   await panel.getByRole("button", { name: "Yorumu gönder" }).click();
   await expect(panel.getByRole("link", { name: "@Şükrü Çağlar" })).toBeVisible();
+
+  // 6b. Comments are Markdown without raw HTML or script URLs; //host links open as external.
+  await panel.getByLabel(/Yorum yazın/).fill(`<img src="x" onerror="alert(1)"> [tıkla](javascript:alert(2)) [dış](//example.test)`);
+  await panel.getByRole("button", { name: "Yorumu gönder" }).click();
+  await expect(panel.getByRole("link", { name: "dış" })).toHaveAttribute("target", "_blank");
+  await expect(panel.getByRole("link", { name: "tıkla" })).not.toHaveAttribute("href", /javascript/i);
+  await expect(panel.locator('img[src="x"]')).toHaveCount(0);
   await page.keyboard.press("Escape");
 
   // 7. Team view shows what the colleague is doing now.
   await page.getByRole("link", { name: "Ekip" }).first().click();
   const row = page.getByRole("listitem").filter({ hasText: "Şükrü Çağlar" });
   await expect(row.getByText("İade akışını yaz")).toBeVisible();
+  expect(cspErrors).toEqual([]);
+  expect(dialogs).toBe(0);
 
   // 8. The colleague signs in, must change the temporary password, and sees the work in My work.
   const ctx2 = await browser.newContext();
@@ -148,4 +164,14 @@ test("another company cannot see the first company's board", async ({ browser })
   await page.goto("/search?q=iade");
   await expect(page.getByText("İade akışını yaz")).toHaveCount(0);
   await ctx.close();
+});
+
+test("anonymous visitors reach only the sign-in pages", async ({ page }) => {
+  for (const url of ["/my-work", "/projects/API", "/admin/users", "/team"]) {
+    await page.goto(url);
+    await expect(page).toHaveURL(/\/login$/);
+  }
+  expect((await page.request.get("/projects/API/export")).status()).toBe(401);
+  await page.goto("/invite/not-a-real-token-123");
+  await expect(page.getByRole("link", { name: "Giriş sayfasına git" })).toBeVisible();
 });
