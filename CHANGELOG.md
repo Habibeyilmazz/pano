@@ -5,6 +5,39 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed (launch round)
+
+- **Burndown: a task finished and later reopened counted as remaining on every day**, so the chart rewrote the past (the days it was done jumped back up). `burndown()` now reads each task's moves across the done line from its history (`moved` activities whose from/to columns differ in being "done") and counts it done on the days it was done at day's end. Tasks with no recorded moves (created in a done column, seeded) still use `completedAt`. A pure test (done, reopened, re-done on one day) and a service test (moved to done yesterday, reopened today) were checked to fail without the fix. Judged by the columns' current category; moves through a since-deleted column are skipped.
+- **Search showed only the first 50 matches with no way to see the rest.** `/search` now pages (`?p=2`, 50 per page, "Showing 51–100" with Previous/Next links); the order breaks ties by id so pages do not overlap. Test: 55 matches split 50 + 5 with no duplicates.
+
+### Changed (launch round: performance)
+
+Measured with a production build, the demo data plus 480 extra tasks in MOB (a 500-task board), Chromium at 4x CPU slowdown for the interaction numbers (scripts in the scratchpad, not committed):
+
+| | Before | After |
+| --- | --- | --- |
+| Board page JavaScript (gzip) | 238 KB | 194 KB |
+| One keyboard drag step, 500-task board | 1.0–1.2 s (one 0.9–1.0 s long task) | 0.4–0.6 s (0.3 s long task) |
+| Filter keystroke, 500-task board | 135–150 ms | 65–120 ms |
+| Sign-in / My work JavaScript (gzip) | 154 / 157 KB | unchanged |
+| 500-task board: TTFB, HTML on the wire, DOM nodes | 115 ms, 69 KB, 15.7k | unchanged |
+
+- The Markdown renderer (`react-markdown` + `remark-gfm`, the largest chunk on the board) moved to `src/components/markdown.tsx` and loads with `next/dynamic` when a task panel renders it. Deep links (`?task=…`) still server-render the Markdown. `handleOf` moved to `src/lib/links.ts` (server, settings page and both client files share it).
+- Board cards (`SortableCard`, `CardBody`) are `memo`ized with a stable "Assign to me" callback, so a drag step or filter keystroke no longer re-renders every card body. dnd-kit still re-renders each `useSortable` card per drag step; that is the remaining 0.3 s.
+
+### Added (launch round: docs)
+
+- README rewritten for first-time readers: a GIF of a manager dragging a card and opening Team (`docs/screenshots/demo.gif`, recorded from the running app with Playwright video and ffmpeg; the recording script was a one-off in the scratchpad), one-command quickstart, a **permissions matrix**, measured performance, a deployment guide (compose, environment variable table, HTTPS proxy and `PROXY_HOPS`, **backups and restore**, upgrading), limits, roadmap, and a full **Türkçe** section (quickstart, demo accounts, features, deployment).
+- `SECURITY.md` (private reporting, what is protected and where it is tested, known trade-offs, deployment checklist) and `CONTRIBUTING.md` (checks CI runs, where code goes, the rules from the handoff notes).
+
+### Launch round notes (for the next agent)
+
+- The backup commands were run against a local PostgreSQL 14 on port 4505 (not Docker, which does not run here): seed, `pg_dump -Fc`, delete comments and assignees, `pg_restore --clean --if-exists`, counts back (40 tasks, 5 comments, 43 assignments, 8 users), then the app started on the restored database and the Team page listed everyone. The `docker compose exec` wrappers in the README were not run.
+- The performance numbers come from one laptop; treat them as relative. To repeat: seed a scratch PGlite (`PANO_DB=… npm run seed`), add tasks with `tasks.createTask` in a loop, `next start` on a free port, and measure with Playwright (`Emulation.setCPUThrottlingRate`, a `longtask` PerformanceObserver, script response bodies gzipped).
+- Not changed: the board still loads every task of a project (fine at 500; paging or virtualization is on the Roadmap). The base bundle (~154 KB gzip) is mostly React and Next.js.
+- Screenshots were not retaken (nothing visible changed except the search pager).
+- Gaps carried over, rechecked: no burndown for completed sprints (feature work, Roadmap); touch drag still unverified on a real phone. Commits still carry no Co-Authored-By line: this session's system instructions forbid attribution lines in commit messages, which overrides the workflow's request for one.
+
 ### Added (feature round: burndown)
 
 - **Sprint burndown on the Overview page**, the first Roadmap item. For each running sprint in the projects the viewer can see: dates and days left, goal, remaining work, scope, tasks done, an "ahead of / behind plan" tag, and a day-by-day burndown chart (remaining vs. an ideal line from the sprint's starting work to zero on the end date, with a "today" marker). A "Show as table" disclosure gives the same numbers for screen readers. The running sprint on the Planlama tab links to it for people with "view reports". Teams without a running sprint see the page as before.
