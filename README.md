@@ -37,7 +37,7 @@ Newer npm versions print that install scripts of `esbuild` and `fsevents` were b
 
 ### Trying it on your phone
 
-`npm run dev` prints a "Network" address, but the dev server does not serve its scripts to other devices, and session cookies are `Secure` (sent only over HTTPS or to `localhost`), so signing in from a phone over plain HTTP silently fails. To try pano on a phone on the same Wi-Fi, run a production build without the `Secure` flag, for this local try-out only:
+`npm run dev` prints a "Network" address, but the dev server does not serve its scripts to other devices, and session cookies are `Secure` (sent only over HTTPS or to `localhost`), so signing in from a phone over plain HTTP cannot work (the sign-in page shows a warning when it detects this). To try pano on a phone on the same Wi-Fi, run a production build without the `Secure` flag, for this local try-out only:
 
 ```bash
 npm run build

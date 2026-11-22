@@ -5,6 +5,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed (design round)
+
+- Sign-in, sign-up and invite pages over plain HTTP on a non-localhost address (with the default `COOKIE_SECURE=true`) bounced back without a word; they now explain that the browser will not keep the cookie and what to do. Detection is the browser's own `isSecureContext`. Checked by opening the app via the machine's LAN IP.
+- 404 pages ignored dark mode (Next renders them on the client, where the inline theme script never runs). e2e checks `data-theme` on a 404 in a dark context.
+- Overview overflowed the screen on phones; the weekly chart labels now wrap.
+- Board: at 1440px the Done column was cut off; the four default columns now share the width (min 15rem each, still scrolling when there are more). An over-limit (WIP) column keeps its amber border with a softer fill, which was loud in dark mode.
+- Automatic hyphenation removed: Turkish task titles were split by English rules in the English UI ("karak-ter").
+- Light `ink-3` darkened a little so small grey text keeps 4.5:1 on the brand tint.
+
+### Changed (design round)
+
+- **Team** reads at a glance: each task shows priority, key and due date on one line above the title; *Now* has an accent edge instead of a mint fill, *Next* is outlined, *Done this week* is one line with a check (no strike-through, up to 4 shown). Empty lanes collapse to one line on phones. About a quarter shorter on desktop and phone.
+- My work titles wrap to two lines on phones instead of being cut; sign-in form starts at the top on phones; board card avatars are larger and overlap less, filter avatars no longer overlap.
+- README screenshots refreshed from the running app.
+
+### Design round notes (for the next agent)
+
+- Every screen was captured in Turkish and English, light and dark, at 1440 and 390 (160 shots, scratch script not committed) with a check for elements running off the right edge of the screen; none remain. `scripts/screenshots.ts` still produces the README set.
+- Looked at and left alone: the unauthenticated pages follow the locale cookie, not the browser language, so a first visit is Turkish (the switch is top right); the estimate on a board card is a bare number (its tooltip says what it is); dark-mode stat tags on the Team page are low-key on purpose.
+- The GitHub repo exists (private) and CI ran green on `72b4021`; this round pushed the first-run and design commits.
+
 ### Fixed (first-run review)
 
 - On a phone, any board with an over-limit (WIP) column off-screen loaded zoomed out (a 412px screen laid out at 648px). A screen-reader label escaped the horizontal scroller because nothing around it was positioned; the scrollers are now its containing block. e2e checks the width in phone emulation.
@@ -41,9 +62,7 @@ All notable changes to this project are documented here. The format follows
 - `next dev` writes `AGENTS.md` (Next.js agent notes); it is committed on purpose.
 - Screenshots: run a seeded production build on :4500 (`npm run build && npm start`) and `npx tsx scripts/screenshots.ts docs/screenshots`.
 - Not verified on a real phone: the touch long-press drag (dnd-kit TouchSensor) and the mobile layout were checked only in Chromium's mobile emulation.
-- The GitHub repository has still not been created or pushed: `gh repo create Habibeyilmazz/pano --private --source . --push` was refused by the permission system again in the security round and in the first-run round. CI (`.github/workflows/ci.yml`) has therefore never run, including the Docker build and the seed against real Postgres. The owner has to create the repo (or allow the command) once.
 - First-run round: a local clone was followed from the README (`npm install`, `npm run dev`), a new company signed up and an admin, a manager (invite link), a member (temporary password) and an English viewer (invite link) worked a week in separate browser contexts: tasks, assignment, mentions, checklist, status moves and drag, stale-edit conflict, read-only viewer, Turkish search, Team, Overview, CSV, deactivation and role change (both end the session at once), audit log. The script lived in the scratchpad, not in the repo; `e2e/journey.spec.ts` holds the parts that found bugs.
-- Over plain HTTP on a non-localhost address with the default `COOKIE_SECURE=true`, sign-in "succeeds" and lands back on the sign-in page without a message. Documented in the README; not detected in code.
 - e2e: press shortcuts only after the page is hydrated (`waitUntil: "networkidle"`), or the key is lost.
 - Commits carry no Co-Authored-By line: a system instruction in these sessions forbids attribution lines.
 
