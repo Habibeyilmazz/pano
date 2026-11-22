@@ -199,7 +199,8 @@ export async function acceptInvite(input: unknown) {
   const data = parse(z.object({ token: z.string().min(10).max(100), password: passwordSchema }), input);
   const u = (await inviteUser(data.token)) ?? fail("invite_invalid");
   const db = await getDb();
-  await db
+  // Conditional on the token so two concurrent uses cannot both succeed.
+  const [used] = await db
     .update(s.users)
     .set({
       passwordHash: await hashPassword(data.password),
@@ -209,7 +210,9 @@ export async function acceptInvite(input: unknown) {
       failedLogins: 0,
       lockedUntil: null,
     })
-    .where(eq(s.users.id, u.id));
+    .where(and(eq(s.users.id, u.id), eq(s.users.inviteTokenHash, sha256(data.token))))
+    .returning({ id: s.users.id });
+  if (!used) fail("invite_invalid");
   await deleteUserSessions(u.id);
   return { userId: u.id, locale: u.locale, ...(await createSession(u.id)) };
 }

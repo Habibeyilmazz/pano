@@ -167,4 +167,12 @@ describe("user lifecycle", () => {
     await account.acceptInvite({ token: inviteToken!, password: PW + "x" });
     await account.login({ email, password: PW + "x" });
   });
+  it("an invite link works once even when used twice at the same moment", async () => {
+    const { inviteToken } = await admin.resetPassword(C.ctx.admin, { userId: C.ids.member2, mode: "invite" });
+    const r = await Promise.allSettled([
+      account.acceptInvite({ token: inviteToken!, password: "BirinciParola1" }),
+      account.acceptInvite({ token: inviteToken!, password: "IkinciParola2" }),
+    ]);
+    expect(r.map((x) => x.status).sort()).toEqual(["fulfilled", "rejected"]);
+  });
 });
