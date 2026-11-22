@@ -230,7 +230,10 @@ describe("tenant isolation: every read used by a page", () => {
     const team = await views.team(b());
     expect(team.map((p) => p.id)).not.toContain(A.ids.member2);
     expect(JSON.stringify(await views.myWork(b()))).not.toContain(A.taskId);
-    expect(JSON.stringify(await views.dashboard(b()))).not.toContain(A.taskId);
+    const dash = JSON.stringify(await views.dashboard(b()));
+    expect(dash).not.toContain(A.taskId);
+    expect(dash).not.toContain(aActiveSprintId);
+    expect(dash).toContain(bSprintId);
     expect(JSON.stringify(await notifications.listNotifications(b()))).not.toContain(A.taskId);
   });
 

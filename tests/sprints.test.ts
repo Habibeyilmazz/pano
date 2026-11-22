@@ -1,10 +1,14 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
+import { getDb, schema as s } from "@/db";
 import { addDays, daysBetween, today } from "@/lib/dates";
+import * as admin from "@/server/admin";
 import { exportCsv } from "@/server/export";
 import * as projects from "@/server/projects";
 import * as sprints from "@/server/sprints";
 import * as tasks from "@/server/tasks";
-import { expectCode, makeCompany, versionOf } from "./helpers";
+import * as views from "@/server/views";
+import { ctxOf, expectCode, makeCompany, PW, versionOf } from "./helpers";
 
 let C: Awaited<ReturnType<typeof makeCompany>>;
 beforeAll(async () => {
@@ -107,5 +111,81 @@ describe("sprints", () => {
     expect(daysBetween("2026-11-22", "2026-12-06")).toBe(14);
     expect(daysBetween("2026-03-28", "2026-03-30")).toBe(2);
     expect(daysBetween("2026-11-22", "2026-11-20")).toBe(-2);
+  });
+});
+
+describe("burndown", () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("counts work from the day it joined to the day it was finished, in the app time zone", () => {
+    const r = sprints.burndown(
+      { startDate: "2026-11-09", endDate: "2026-11-13" },
+      [
+        // Finished 00:30 on the 11th in Istanbul (still the 10th in UTC).
+        { estimate: 5, joinedAt: at("2026-11-01T09:00:00Z"), completedAt: at("2026-11-10T21:30:00Z") },
+        { estimate: 3, joinedAt: at("2026-11-01T09:00:00Z"), completedAt: null },
+        // Added to the sprint on its second day.
+        { estimate: 2, joinedAt: at("2026-11-10T09:00:00Z"), completedAt: null },
+        // No estimate: counts as zero points.
+        { estimate: null, joinedAt: at("2026-11-01T09:00:00Z"), completedAt: at("2026-11-09T10:00:00Z") },
+      ],
+      at("2026-11-11T12:00:00Z"),
+    );
+    expect(r.unit).toBe("points");
+    expect(r.days.map((d) => d.remaining)).toEqual([8, 10, 5, null, null]);
+    expect(r.days.map((d) => d.ideal)).toEqual([8, 6, 4, 2, 0]);
+    expect({ total: r.total, remaining: r.remaining, done: r.done, count: r.count, behind: r.behind }).toEqual({ total: 10, remaining: 5, done: 2, count: 4, behind: 1 });
+  });
+
+  it("counts tasks when nothing is estimated, and runs past an overdue end date", () => {
+    const joinedAt = at("2026-11-01T09:00:00Z");
+    const r = sprints.burndown(
+      { startDate: "2026-11-09", endDate: "2026-11-10" },
+      [
+        { estimate: null, joinedAt, completedAt: null },
+        { estimate: 0, joinedAt, completedAt: at("2026-11-12T08:00:00Z") },
+      ],
+      at("2026-11-12T12:00:00Z"),
+    );
+    expect(r.unit).toBe("tasks");
+    expect(r.days.map((d) => [d.date, d.remaining, d.ideal])).toEqual([
+      ["2026-11-09", 2, 2],
+      ["2026-11-10", 2, 0],
+      ["2026-11-11", 2, 0],
+      ["2026-11-12", 1, 0],
+    ]);
+    expect(r.behind).toBe(1);
+  });
+
+  it("Overview shows each running sprint of the projects you can see, using task history for scope added later", async () => {
+    const D = await makeCompany();
+    const db = await getDb();
+    const longAgo = new Date(Date.now() - 10 * 864e5);
+    const sp = await sprints.createSprint(D.ctx.admin, { projectId: D.projectId, name: "Koşan" });
+    const inSprint = await tasks.createTask(D.ctx.admin, { projectId: D.projectId, title: "Baştan beri", estimate: 5, sprintId: sp.sprintId });
+    const finished = await tasks.createTask(D.ctx.admin, { projectId: D.projectId, columnId: D.cols[3].id, title: "Bugün bitti", estimate: 2, sprintId: sp.sprintId });
+    const added = await tasks.createTask(D.ctx.admin, { projectId: D.projectId, title: "Sonradan eklendi", estimate: 3 });
+    await db.update(s.tasks).set({ createdAt: longAgo }).where(inArray(s.tasks.id, [inSprint.taskId, finished.taskId, added.taskId]));
+    await tasks.updateTask(D.ctx.admin, { taskId: added.taskId, version: await versionOf(D.ctx.admin, added.key), sprintId: sp.sprintId });
+    await db
+      .update(s.activities)
+      .set({ createdAt: new Date(Date.now() - 864e5) })
+      .where(and(eq(s.activities.taskId, added.taskId), eq(s.activities.type, "field")));
+    await sprints.startSprint(D.ctx.admin, { sprintId: sp.sprintId, startDate: addDays(t0, -2), endDate: addDays(t0, 3) });
+    // A running sprint in the restricted project, and a planned one that must not show.
+    const secret = await sprints.createSprint(D.ctx.admin, { projectId: D.secretId, name: "Gizli sprint" });
+    await sprints.startSprint(D.ctx.admin, { sprintId: secret.sprintId, startDate: t0, endDate: addDays(t0, 6) });
+    await sprints.createSprint(D.ctx.admin, { projectId: D.projectId, name: "Sıradaki" });
+
+    const report = (await views.dashboard(D.ctx.manager, D.projectId)).sprints;
+    expect(report.map((r) => r.sprint.name)).toEqual(["Koşan"]);
+    expect(report[0].days.slice(0, 3).map((d) => d.remaining)).toEqual([7, 10, 8]);
+    expect(report[0]).toMatchObject({ unit: "points", total: 10, remaining: 8, done: 1, count: 3, projectKey: "WEB" });
+    expect((await views.dashboard(D.ctx.admin)).sprints.map((r) => r.sprint.name)).toEqual(["Gizli sprint", "Koşan"]);
+
+    // Someone who may view reports but is not on the restricted project does not see its sprint.
+    const { roleId } = await admin.createRole(D.ctx.admin, { name: "Raporcu", permissions: ["reports.view"] });
+    const { userId } = await admin.createUser(D.ctx.admin, { name: "Rapor Okuyan", email: `rapor-${D.tag}@x.test`, roleId, locale: "tr", mode: "password", password: PW });
+    expect((await views.dashboard(await ctxOf(userId))).sprints.map((r) => r.sprint.name)).toEqual(["Koşan"]);
   });
 });

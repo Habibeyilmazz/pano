@@ -3,6 +3,7 @@ import { getDb, schema as s } from "@/db";
 import { addDays, today, weekStart, weekStartInstant } from "@/lib/dates";
 import { fail } from "@/lib/errors";
 import { byName, need, visibleProjectIds, type Ctx } from "./ctx";
+import { activeSprintReports } from "./sprints";
 
 const PRIORITY_RANK: Record<string, number> = { highest: 0, high: 1, medium: 2, low: 3, lowest: 4 };
 const RECENT_DONE_DAYS = 14;
@@ -145,7 +146,7 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
   const weeks = 8;
   const firstWeek = addDays(weekStart(today()), -7 * (weeks - 1));
   const db = await getDb();
-  const [status, done, workload, overdue] = await Promise.all([
+  const [status, done, workload, overdue, sprints] = await Promise.all([
     db
       .select({ category: s.columns.category, n: sql<number>`count(*)::int` })
       .from(s.tasks)
@@ -191,6 +192,7 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
       )
       .orderBy(asc(s.tasks.dueDate))
       .limit(50),
+    activeSprintReports(ctx, ids),
   ]);
   const byStatus = { todo: 0, doing: 0, done: 0, ...Object.fromEntries(status.map((r) => [r.category, r.n])) };
   const perWeek = Array.from({ length: weeks }, (_, i) => ({ week: addDays(firstWeek, 7 * i), done: 0 }));
@@ -199,5 +201,5 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
     const slot = perWeek.find((p) => p.week === w);
     if (slot) slot.done++;
   }
-  return { byStatus, perWeek, overdue, overdueTotal: overdue[0]?.total ?? 0, workload: workload.filter((w) => w.doing.length + w.todo.length > 0) };
+  return { byStatus, perWeek, sprints, overdue, overdueTotal: overdue[0]?.total ?? 0, workload: workload.filter((w) => w.doing.length + w.todo.length > 0) };
 }

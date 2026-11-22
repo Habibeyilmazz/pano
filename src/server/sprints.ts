@@ -1,6 +1,7 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, transaction, schema as s } from "@/db";
+import { addDays, daysBetween, today } from "@/lib/dates";
 import { fail } from "@/lib/errors";
 import { parse } from "./account";
 import { getProject, need, type Ctx } from "./ctx";
@@ -116,6 +117,71 @@ export async function completeSprint(ctx: Ctx, input: unknown) {
     await tx.update(s.sprints).set({ state: "closed", closedAt: new Date() }).where(eq(s.sprints.id, sp.id));
     return { moved: moved.length };
   });
+}
+
+export type BurndownTask = { estimate: number | null; joinedAt: Date; completedAt: Date | null };
+
+/**
+ * Remaining work per day (app time zone) from the start date to the end date, or to today when the
+ * sprint runs over. A task counts from the day it joined the sprint until the day it was finished;
+ * tasks taken out of the sprint are not counted at all. Points when any task has an estimate, else tasks.
+ */
+export function burndown(sp: { startDate: string; endDate: string }, tasks: BurndownTask[], now = new Date()) {
+  const t = today(0, now);
+  const unit: "points" | "tasks" = tasks.some((x) => (x.estimate ?? 0) > 0) ? "points" : "tasks";
+  const rows = tasks.map((x) => ({
+    size: unit === "points" ? (x.estimate ?? 0) : 1,
+    joined: today(0, x.joinedAt),
+    done: x.completedAt ? today(0, x.completedAt) : null,
+  }));
+  const remainingOn = (d: string) => rows.reduce((n, r) => n + (r.joined <= d && !(r.done && r.done <= d) ? r.size : 0), 0);
+  const total = rows.reduce((n, r) => n + r.size, 0);
+  const span = daysBetween(sp.startDate, sp.endDate);
+  const length = daysBetween(sp.startDate, t > sp.endDate ? t : sp.endDate) + 1;
+  // The guideline runs from what the sprint started with (Jira's "ideal") down to zero on the end date.
+  const commitment = remainingOn(sp.startDate) || total;
+  const ideal = (k: number) => (span > 0 ? Math.max(0, commitment * (1 - k / span)) : 0);
+  const days = Array.from({ length }, (_, k) => {
+    const date = addDays(sp.startDate, k);
+    return { date, remaining: date <= t ? remainingOn(date) : null, ideal: ideal(k) };
+  });
+  const remaining = remainingOn(t);
+  const idealNow = t < sp.startDate ? commitment : ideal(daysBetween(sp.startDate, t));
+  const done = rows.filter((r) => r.done).length;
+  return { unit, total, remaining, done, count: rows.length, days, behind: Math.round((remaining - idealNow) * 10) / 10 };
+}
+
+/** Running sprints of the given (already visible) projects, each with its burndown. */
+export async function activeSprintReports(ctx: Ctx, projectIds: string[]) {
+  if (!projectIds.length) return [];
+  const db = await getDb();
+  const active = await db
+    .select({ sprint: s.sprints, projectKey: s.projects.key, projectName: s.projects.name })
+    .from(s.sprints)
+    .innerJoin(s.projects, eq(s.projects.id, s.sprints.projectId))
+    .where(and(eq(s.sprints.workspaceId, ctx.workspaceId), eq(s.sprints.state, "active"), inArray(s.sprints.projectId, projectIds)))
+    .orderBy(asc(s.projects.key));
+  if (!active.length) return [];
+  const rows = await db
+    .select({
+      sprintId: s.tasks.sprintId,
+      estimate: s.tasks.estimate,
+      completedAt: s.tasks.completedAt,
+      // When it last joined this sprint (task history), else when it was created (created inside it).
+      joinedAt: sql<string>`coalesce((select max(a.created_at) from ${s.activities} a where a.task_id = ${s.tasks}.id and a.type = 'field'
+        and a.data->>'field' = 'sprintId' and a.data->>'to' = ${s.tasks}.sprint_id::text), ${s.tasks}.created_at)`,
+    })
+    .from(s.tasks)
+    .where(and(eq(s.tasks.workspaceId, ctx.workspaceId), inArray(s.tasks.sprintId, active.map((a) => a.sprint.id))));
+  return active.map(({ sprint, projectKey, projectName }) => ({
+    sprint,
+    projectKey,
+    projectName,
+    ...burndown(
+      { startDate: sprint.startDate!, endDate: sprint.endDate! },
+      rows.filter((r) => r.sprintId === sprint.id).map((r) => ({ estimate: r.estimate, completedAt: r.completedAt, joinedAt: new Date(r.joinedAt) })),
+    ),
+  }));
 }
 
 /** Only planned sprints can be deleted (closed ones are the team's record); their tasks return to the backlog. */
