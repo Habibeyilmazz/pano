@@ -313,7 +313,8 @@ export async function addComment(ctx: Ctx, input: unknown) {
     const { task } = await loadTask(ctx, data.taskId, tx);
     await tx.insert(s.comments).values({ workspaceId: ctx.workspaceId, taskId: task.id, authorId: ctx.userId, body: data.body });
     await log(tx, ctx, task, "commented");
-    const handles = new Set([...data.body.matchAll(/(?<![\w.])@([\w.-]+)/g)].map((m) => m[1].toLowerCase()));
+    // A handle ends in a letter or digit, so "@ayse." at the end of a sentence still mentions ayse.
+    const handles = new Set([...data.body.matchAll(/(?<![\w.])@([\w.-]*\w)/g)].map((m) => m[1].toLowerCase()));
     if (handles.size) {
       const people = await projectPeople(ctx, task.projectId);
       await notify(tx, ctx, people.filter((p) => handles.has(handleOf(p.email))).map((p) => p.id), "mentioned", task.id);

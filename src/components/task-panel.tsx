@@ -34,7 +34,7 @@ const handleOf = (email: string) => email.split("@")[0].toLowerCase();
 function Markdown({ text, people }: { text: string; people: Person[] }) {
   const withMentions = useMemo(
     () =>
-      text.replace(/(^|[^\w.])@([\w.-]+)/g, (all, pre: string, h: string) => {
+      text.replace(/(^|[^\w.])@([\w.-]*\w)/g, (all, pre: string, h: string) => {
         const p = people.find((x) => handleOf(x.email) === h.toLowerCase());
         return p ? `${pre}[@${p.name.replace(/[\\[\]()*_`]/g, "\\$&")}](/team/${p.id})` : all;
       }),

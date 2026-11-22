@@ -104,7 +104,7 @@ describe("copying a task", () => {
 describe("mentions and notifications", () => {
   it("notifies mentioned and assigned people, not the actor", async () => {
     const handle = C.ctx.member.email.split("@")[0];
-    await tasks.addComment(C.ctx.admin, { taskId: C.taskId, body: `@${handle} bakabilir misin? @${C.ctx.admin.email.split("@")[0]}` });
+    await tasks.addComment(C.ctx.admin, { taskId: C.taskId, body: `Bakabilir misin @${handle}. @${C.ctx.admin.email.split("@")[0]}` });
     const list = await notifications.listNotifications(C.ctx.member);
     expect(list[0]).toMatchObject({ type: "mentioned", taskKey: C.key });
     expect((await notifications.listNotifications(C.ctx.admin)).some((n) => n.type === "mentioned")).toBe(false);
