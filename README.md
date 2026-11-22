@@ -84,10 +84,10 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 
 - **Tenant isolation**: every table row carries `workspace_id`; every service query filters by the caller's workspace and project visibility. Records from another company are answered with "not found", never "forbidden", so IDs leak nothing. `tests/tenant-isolation.test.ts` runs a company-B admin (who holds every permission) against company A's IDs for **every server action** in `src/app/actions.ts`, and a meta-test fails if an action is added without such a case.
 - **Permissions are enforced on the server** in `src/server/*`; the UI only hides what you cannot do. Nobody can grant, or act on someone holding, permissions they do not have themselves (no privilege escalation through "manage users"). The company always keeps an active admin.
-- **Auth**: email + password, hashed with scrypt (N=2^17, r=8, p=1) from `node:crypto`. Sessions are random 256-bit tokens in an HttpOnly, Secure, SameSite=Lax cookie; only their SHA-256 is stored. Sessions end on sign-out, deactivation, role change, permission change of a custom role, password reset and password change (other devices).
-- **Sign-in protection**: 5 wrong passwords lock the account for 15 minutes; an in-memory per-IP limit caps attempts (see Limits). Password policy: at least 10 characters with letters and digits.
-- **CSRF**: all mutations are Next.js Server Actions, which reject cross-origin requests; cookies are SameSite=Lax. The only route handler is a read-only CSV download.
-- **Validation** with zod at every server boundary. Markdown is rendered without raw HTML and with unsafe URLs stripped. `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`.
+- **Auth**: email + password, hashed with scrypt (N=2^17, r=8, p=1) from `node:crypto`. Sessions are random 256-bit tokens in an HttpOnly, Secure, SameSite=Lax cookie; only their SHA-256 is stored. Sessions end on sign-out, deactivation, role change, permission change of a custom role, password reset and password change (other devices). A password reset by link also revokes the old password at once; invite/reset links work exactly once.
+- **Sign-in protection**: 5 wrong passwords lock the account for 15 minutes; in-memory per-IP limits cap sign-in attempts and company sign-ups, and changing your password allows 10 tries per 15 minutes (see Limits). Password policy: at least 10 characters with letters and digits.
+- **CSRF**: all mutations are Next.js Server Actions, which reject requests whose `Origin` does not match the host (checked by replaying a real action from a foreign origin); cookies are SameSite=Lax. The only route handler is a read-only CSV download.
+- **Validation** with zod at every server boundary. Markdown is rendered without raw HTML and with unsafe URLs stripped; `//host` links open as external links in a new tab. Headers: a Content-Security-Policy (only same-origin scripts, styles, images, fonts and connections; no plugins, framing or off-site form posts; `'unsafe-inline'` scripts remain because Next.js inlines its bootstrap), HSTS, Permissions-Policy, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`. The e2e journey fails on any CSP violation. CI actions are pinned to commit SHAs with a read-only token.
 
 ## Development
 
@@ -130,6 +130,7 @@ Then open `/signup` to create your company (the demo seed is not run in Docker).
 ## Limits in v0.1
 
 - The per-IP limiters (sign-in: 30 attempts, sign-up: 10 companies per 15 minutes) live in process memory: fine for one app instance; use a shared store when running several. They read the client IP from the right end of `X-Forwarded-For` (`PROXY_HOPS`), so run the app behind a reverse proxy that appends to that header; exposed directly, a client can pick its own IP and only the per-account lockout applies.
+- Account lockout can be triggered by anyone who knows an email address (5 wrong passwords block that account for 15 minutes); this trades availability for brute-force protection.
 - One time zone per installation (`APP_TZ`) for due dates and week boundaries.
 - No email delivery yet (links are copied by the admin).
 
