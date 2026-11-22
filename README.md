@@ -33,6 +33,17 @@ npm run dev        # seeds the demo company on first run, then serves http://loc
 
 Development and tests use [PGlite](https://pglite.dev) (Postgres compiled to WebAssembly) stored in `.data/pglite`. Delete that folder to start over; `npm run seed` adds the demo company to an empty database.
 
+Newer npm versions print that install scripts of `esbuild` and `fsevents` were blocked; nothing needs them, you can ignore it.
+
+### Trying it on your phone
+
+`npm run dev` prints a "Network" address, but the dev server does not serve its scripts to other devices, and session cookies are `Secure` (sent only over HTTPS or to `localhost`), so signing in from a phone over plain HTTP silently fails. To try pano on a phone on the same Wi-Fi, run a production build without the `Secure` flag, for this local try-out only:
+
+```bash
+npm run build
+COOKIE_SECURE=false npm start    # then open http://<your computer's IP>:4500 on the phone
+```
+
 ### Demo logins
 
 All demo accounts are fictional and share the password **`PanoDemo2026`** (demo only).

@@ -5,6 +5,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed (first-run review)
+
+- On a phone, any board with an over-limit (WIP) column off-screen loaded zoomed out (a 412px screen laid out at 648px). A screen-reader label escaped the horizontal scroller because nothing around it was positioned; the scrollers are now its containing block. e2e checks the width in phone emulation.
+- Sign-in, sign-up, invite and change-password forms fell back to GET when submitted before the JavaScript loaded (slow phone, blocked script), which put the password in the URL. They now post. e2e submits the sign-in form with JavaScript off.
+- An invite link for someone the admin set to English opened in Turkish; it now opens in the invitee's language unless that browser already chose one.
+- Checklist ticks waited for the server and the boxes were disabled meanwhile, so quick ticks were lost. Ticks now show at once and roll back if refused.
+- `@ayse.` at the end of a sentence did not mention ayse (the dot became part of the handle): no notification, no link.
+- README: how to try the app on a phone (production build with `COOKIE_SECURE=false`; dev mode does not work from other devices), and a note that npm's "install scripts blocked" warning is harmless.
+
 ### Security
 
 - A password reset by invite link left the old password working until the link was used; it is now revoked at once.
@@ -32,7 +41,10 @@ All notable changes to this project are documented here. The format follows
 - `next dev` writes `AGENTS.md` (Next.js agent notes); it is committed on purpose.
 - Screenshots: run a seeded production build on :4500 (`npm run build && npm start`) and `npx tsx scripts/screenshots.ts docs/screenshots`.
 - Not verified on a real phone: the touch long-press drag (dnd-kit TouchSensor) and the mobile layout were checked only in Chromium's mobile emulation.
-- The GitHub repository has still not been created or pushed: `gh repo create Habibeyilmazz/pano --private --source . --push` was refused by the permission system again in the security round. CI (`.github/workflows/ci.yml`) has therefore never run, including the Docker build and the seed against real Postgres.
+- The GitHub repository has still not been created or pushed: `gh repo create Habibeyilmazz/pano --private --source . --push` was refused by the permission system again in the security round and in the first-run round. CI (`.github/workflows/ci.yml`) has therefore never run, including the Docker build and the seed against real Postgres. The owner has to create the repo (or allow the command) once.
+- First-run round: a local clone was followed from the README (`npm install`, `npm run dev`), a new company signed up and an admin, a manager (invite link), a member (temporary password) and an English viewer (invite link) worked a week in separate browser contexts: tasks, assignment, mentions, checklist, status moves and drag, stale-edit conflict, read-only viewer, Turkish search, Team, Overview, CSV, deactivation and role change (both end the session at once), audit log. The script lived in the scratchpad, not in the repo; `e2e/journey.spec.ts` holds the parts that found bugs.
+- Over plain HTTP on a non-localhost address with the default `COOKIE_SECURE=true`, sign-in "succeeds" and lands back on the sign-in page without a message. Documented in the README; not detected in code.
+- e2e: press shortcuts only after the page is hydrated (`waitUntil: "networkidle"`), or the key is lost.
 - Commits carry no Co-Authored-By line: a system instruction in these sessions forbids attribution lines.
 
 ## [0.1.0] - 2026-11-22
