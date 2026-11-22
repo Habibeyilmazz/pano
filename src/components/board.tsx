@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   closestCorners,
   DndContext,
@@ -113,6 +113,7 @@ export function Board({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
+  const assignSelf = useCallback((taskId: string) => run(() => assignTaskAction({ taskId, userId: me })), [run, me]);
   const canEdit = (t: BoardTask) => perms.editAny || (perms.create && (t.reporterId === me || t.assigneeIds.includes(me)));
   const containerOf = (id: string, its: Items) => (id in its ? id : Object.keys(its).find((c) => its[c].includes(id)));
   const colName = (id: string | undefined) => {
@@ -381,7 +382,7 @@ export function Board({
                       href={openHref(t.key)}
                       people={board.everyone}
                       canAssignSelf={perms.assignSelf && !t.assigneeIds.includes(me)}
-                      onAssignSelf={() => run(() => assignTaskAction({ taskId: t.id, userId: me }))}
+                      onAssignSelf={assignSelf}
                     />
                   ) : null;
                 })}
@@ -445,7 +446,8 @@ function ColumnView({ column, name, ids, total, filtered, children }: { column: 
   );
 }
 
-function SortableCard({
+// Memoized so a filter keystroke re-renders only the cards whose props changed.
+const SortableCard = memo(function SortableCard({
   task,
   done,
   draggable,
@@ -460,7 +462,7 @@ function SortableCard({
   href: string;
   people: { id: string; name: string }[];
   canAssignSelf: boolean;
-  onAssignSelf: () => void;
+  onAssignSelf: (taskId: string) => void;
 }) {
   const { m, fmt } = useI18n();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: task.id, disabled: !draggable });
@@ -477,7 +479,7 @@ function SortableCard({
         {canAssignSelf && (
           <button
             type="button"
-            onClick={onAssignSelf}
+            onClick={() => onAssignSelf(task.id)}
             className="rounded p-1 text-ink-3 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-surface-2 hover:text-ink focus-visible:opacity-100 [@media(hover:none)]:hidden"
             aria-label={`${m.task.assignToMe}: ${task.key}`}
             title={m.task.assignToMe}
@@ -500,9 +502,11 @@ function SortableCard({
       </div>
     </li>
   );
-}
+});
 
-function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done: boolean; people: { id: string; name: string }[]; href?: string; lifted?: boolean }) {
+// Memoized: every sortable card re-renders on each drag step and each filter keystroke; with
+// hundreds of cards the card bodies must not.
+const CardBody = memo(function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done: boolean; people: { id: string; name: string }[]; href?: string; lifted?: boolean }) {
   const i = useI18n();
   const { m } = i;
   const assignees = task.assigneeIds.map((id) => people.find((p) => p.id === id) ?? { id, name: m.common.unknownUser });
@@ -553,7 +557,7 @@ function CardBody({ task, done, people, href, lifted }: { task: BoardTask; done:
       </div>
     </div>
   );
-}
+});
 
 function ListView({ board, visible, openHref }: { board: BoardData; visible: BoardTask[]; openHref: (k: string) => string }) {
   const i = useI18n();
