@@ -50,10 +50,11 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   await dialog.getByLabel("Parola", { exact: true }).fill("GeciciParola1");
   await dialog.getByRole("button", { name: "Kullanıcıyı oluştur" }).click();
   await expect(page.getByRole("cell", { name: /Şükrü Çağlar/ })).toBeVisible();
-  // 3b. An invite link for an English-speaking colleague opens in English.
+  // 3b. An invite link for an English-speaking viewer opens in English; she sets her password and is in.
   await page.getByRole("button", { name: "Kullanıcı ekle" }).click();
   await dialog.getByLabel("Ad soyad").fill("Iris Brown");
   await dialog.getByLabel("E-posta").fill(`iris-${stamp}@e2e.test`);
+  await dialog.getByLabel("Rol", { exact: true }).selectOption({ label: "İzleyici" });
   await dialog.getByLabel("Dil").selectOption("en");
   await dialog.getByRole("button", { name: "Kullanıcıyı oluştur" }).click();
   const inviteUrl = await page.getByRole("textbox", { name: "URL" }).inputValue();
@@ -62,7 +63,14 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   const pInvite = await ctxInvite.newPage();
   await pInvite.goto(inviteUrl);
   await expect(pInvite.getByRole("heading", { name: "Join Deneme Teknoloji A.Ş. on pano" })).toBeVisible();
-  await ctxInvite.close();
+  await pInvite.getByLabel("New password").fill("IrisParola2026");
+  await pInvite.getByRole("button", { name: "Set password and sign in" }).click();
+  await expect(pInvite.getByRole("heading", { name: "My work" })).toBeVisible();
+  // The link works once.
+  const reuse = await browser.newPage();
+  await reuse.goto(inviteUrl);
+  await expect(reuse.getByRole("link", { name: /Giriş sayfasına git|Go to sign in/ })).toBeVisible();
+  await reuse.close();
 
   await page.getByRole("link", { name: "Denetim kaydı" }).click();
   await expect(page.getByText("Kullanıcı ekledi: Şükrü Çağlar (Geliştirici)")).toBeVisible();
@@ -106,6 +114,20 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
   await expect(page.getByRole("region", { name: "İncelemede" }).getByText("İade akışını yaz")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("region", { name: "İncelemede" }).getByText("İade akışını yaz")).toBeVisible();
+
+  // 5c. The viewer sees the board but cannot change it: no new-task button, no drag handles,
+  //     no editing in the task panel, and "c" does nothing.
+  await pInvite.goto("/projects/API", { waitUntil: "networkidle" });
+  await expect(pInvite.getByRole("region", { name: "In review" }).getByText("İade akışını yaz")).toBeVisible();
+  await expect(pInvite.getByRole("button", { name: "New task" })).toHaveCount(0);
+  await expect(pInvite.getByRole("button", { name: /^Move / })).toHaveCount(0);
+  await pInvite.keyboard.press("c");
+  await expect(pInvite.getByLabel("Title")).toHaveCount(0);
+  await pInvite.getByRole("link", { name: "İade akışını yaz" }).click();
+  await expect(pInvite.getByRole("dialog").getByRole("heading", { name: "İade akışını yaz" })).toBeVisible();
+  await expect(pInvite.getByRole("dialog").getByRole("button", { name: "Edit" })).toHaveCount(0);
+  await expect(pInvite.getByRole("dialog").getByRole("button", { name: "Assign to me" })).toHaveCount(0);
+  await ctxInvite.close();
 
   // 6. Open the task, assign the colleague, comment with a mention.
   await page.getByRole("link", { name: "İade akışını yaz" }).click();
