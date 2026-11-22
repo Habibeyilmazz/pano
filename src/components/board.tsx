@@ -49,7 +49,7 @@ function applyFilters(tasks: BoardTask[], f: Filters, me: string, doneCols: Set<
       (!f.overdue || (!!t.dueDate && t.dueDate < t0 && !doneCols.has(t.columnId))) &&
       (!f.week || (!!t.dueDate && t.dueDate >= weekStart(t0) && t.dueDate <= weekEnd)) &&
       (!f.people.length || f.people.some((p) => t.assigneeIds.includes(p))) &&
-      (!f.label || t.labels.includes(f.label)) &&
+      (!f.label || t.labels.some((l) => fold(l) === fold(f.label))) &&
       (!f.priority || t.priority === f.priority) &&
       (!q || t.searchText.includes(q)),
   );
@@ -86,7 +86,8 @@ export function Board({
   const people = board.people;
   const byId = useMemo(() => new Map(board.tasks.map((t) => [t.id, t])), [board.tasks]);
   const doneCols = useMemo(() => new Set(board.columns.filter((c) => c.category === "done").map((c) => c.id)), [board.columns]);
-  const labels = useMemo(() => [...new Set(board.tasks.flatMap((t) => t.labels))].sort((a, b) => a.localeCompare(b, i.tag)), [board.tasks, i.tag]);
+  // "Ofis" and "ofis" on different tasks are one label chip.
+  const labels = useMemo(() => [...new Map(board.tasks.flatMap((t) => t.labels).map((l) => [fold(l), l])).values()].sort((a, b) => a.localeCompare(b, i.tag)), [board.tasks, i.tag]);
   const scoped = useMemo(() => (scope ? board.tasks.filter((t) => (scope === "backlog" ? !t.sprintId : t.sprintId === scope)) : board.tasks), [board.tasks, scope]);
   const visible = useMemo(() => applyFilters(scoped, filters, me, doneCols), [scoped, filters, me, doneCols]);
   const derived = useMemo(() => {

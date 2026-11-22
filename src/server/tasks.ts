@@ -16,7 +16,8 @@ const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const labelsSchema = z
   .array(z.string().trim().min(1).max(30))
   .max(10)
-  .transform((l) => [...new Set(l.map((x) => x.toLocaleLowerCase("tr-TR")))]);
+  // Kept as written: lower-casing the Turkish way turned "API" into "apı". Duplicates fold together.
+  .transform((l) => l.filter((x, i) => l.findIndex((y) => fold(y) === fold(x)) === i));
 
 const searchTextOf = (key: string, t: { title: string; description: string; labels: string[] }) =>
   fold([key, t.title, t.description, ...t.labels].join(" "));

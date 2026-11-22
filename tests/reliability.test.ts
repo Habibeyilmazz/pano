@@ -56,6 +56,11 @@ describe("columns", () => {
 });
 
 describe("Turkish and Unicode text", () => {
+  it("keeps labels as written: English capitals do not turn into dotless ı", async () => {
+    const { key } = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: "Etiket", labels: ["API", "api", "CI/CD", "İzmir", "izmir"] });
+    expect((await tasks.getTaskDetail(C.ctx.admin, key)).task.labels).toEqual(["API", "CI/CD", "İzmir"]);
+    expect((await tasks.searchTasks(C.ctx.admin, "ci/cd")).map((t) => t.key)).toContain(key);
+  });
   it("stores a maximum-length description with combining marks and emoji and finds it", async () => {
     const tail = "Çalışma ağacı 🚀 İstanbul";
     // The limit counts characters (code points), so the emoji counts once.
