@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import { acceptInviteAction, changePasswordAction, loginAction, setLocaleAction, signupAction } from "@/app/actions";
 import { useI18n } from "@/lib/i18n/client";
 import { LOCALES } from "@/lib/i18n";
@@ -60,6 +60,20 @@ export function LanguageSwitch() {
         </button>
       ))}
     </div>
+  );
+}
+
+const noop = () => () => {};
+
+/** Secure cookies are dropped outside a secure context (plain http, except localhost), so sign-in would silently bounce. */
+export function InsecureNote({ secureCookies }: { secureCookies: boolean }) {
+  const { m } = useI18n();
+  const insecure = useSyncExternalStore(noop, () => !window.isSecureContext, () => false);
+  if (!secureCookies || !insecure) return null;
+  return (
+    <p role="alert" className="mb-6 rounded-md border border-warn-line bg-warn-soft px-3 py-2 text-sm text-warn">
+      {m.auth.insecure}
+    </p>
   );
 }
 

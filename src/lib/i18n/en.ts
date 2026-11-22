@@ -77,6 +77,8 @@ export const en: typeof tr = {
     newPassword: "New password",
     changePassword: "Change password",
     tagline: "Who is working on what, what is next, what is done: all on one board.",
+    insecure:
+      "This address is not encrypted (http), so the browser will not keep the sign-in cookie and you cannot sign in. Open the app over HTTPS, or, for a local try-out only, start it with COOKIE_SECURE=false.",
     sample: {
       who: ["Zeynep D.", "Emre Ş.", "Elif Ç."],
       now: ["Home page design", "Android 15 testing", "Order tracking"],

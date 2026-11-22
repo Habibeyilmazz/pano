@@ -10,6 +10,7 @@ export const SESSION_COOKIE = "pano_session";
 export const LOCALE_COOKIE = "pano_locale";
 
 const secure = process.env.COOKIE_SECURE !== "false";
+export const secureCookies = secure;
 
 export async function setSessionCookie(token: string, expires: Date) {
   (await cookies()).set(SESSION_COOKIE, token, { httpOnly: true, secure, sameSite: "lax", path: "/", expires });

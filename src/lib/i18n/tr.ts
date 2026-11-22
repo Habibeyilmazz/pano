@@ -76,6 +76,8 @@ export const tr = {
     newPassword: "Yeni parola",
     changePassword: "Parolayı değiştir",
     tagline: "Kim neyle uğraşıyor, sırada ne var, ne bitti: hepsi tek panoda.",
+    insecure:
+      "Bu adres şifrelenmemiş (http) olduğu için tarayıcı oturum çerezini saklamaz ve giriş yapamazsınız. Uygulamayı HTTPS üzerinden açın ya da yalnızca yerel deneme için COOKIE_SECURE=false ile başlatın.",
     sample: {
       who: ["Zeynep D.", "Emre Ş.", "Elif Ç."],
       now: ["Ana sayfa tasarımı", "Android 15 testi", "Sipariş takibi"],

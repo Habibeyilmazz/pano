@@ -1,6 +1,7 @@
 import { getI18n } from "@/lib/i18n/server";
 import { Logo } from "@/components/ui";
-import { LanguageSwitch } from "@/components/auth-forms";
+import { InsecureNote, LanguageSwitch } from "@/components/auth-forms";
+import { secureCookies } from "@/lib/session";
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const i = await getI18n();
@@ -30,7 +31,10 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
           <Logo className="text-ink lg:invisible" />
           <LanguageSwitch />
         </div>
-        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">{children}</div>
+        <div className="mx-auto flex w-full max-w-sm flex-1 flex-col py-10 sm:justify-center">
+          <InsecureNote secureCookies={secureCookies} />
+          {children}
+        </div>
       </main>
     </div>
   );
