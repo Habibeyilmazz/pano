@@ -3,11 +3,11 @@ import { orNotFound, requireCtx } from "@/lib/session";
 import { can } from "@/server/ctx";
 import { getBoard } from "@/server/projects";
 import { getTaskDetail } from "@/server/tasks";
-import { Board } from "./board";
+import { Board, type View } from "./board";
 import { TaskPanel } from "./task-panel";
 
 /** Server part of the board and list views: loads the board and, with ?task=KEY, the open task. */
-export async function BoardPage({ params, searchParams, view }: { params: Promise<{ key: string }>; searchParams: Promise<{ task?: string }>; view: "board" | "list" }) {
+export async function BoardPage({ params, searchParams, view }: { params: Promise<{ key: string }>; searchParams: Promise<{ task?: string }>; view: View }) {
   const ctx = await requireCtx();
   const [{ key }, { task }] = await Promise.all([params, searchParams]);
   const [board, detail] = await Promise.all([orNotFound(getBoard(ctx, key)), task ? orNotFound(getTaskDetail(ctx, String(task))) : null]);

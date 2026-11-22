@@ -11,6 +11,7 @@ export async function exportCsv(ctx: Ctx, projectKey: string, columnName: (c: { 
   const board = await getBoard(ctx, projectKey);
   const people = new Map(board.people.map((p) => [p.id, p.name]));
   const cols = new Map(board.columns.map((c) => [c.id, columnName(c)]));
+  const sprints = new Map(board.sprints.map((sp) => [sp.id, sp.name]));
   const lines = board.tasks.map((t) =>
     [
       t.key,
@@ -22,6 +23,7 @@ export async function exportCsv(ctx: Ctx, projectKey: string, columnName: (c: { 
       t.estimate,
       t.labels.join(", "),
       t.createdAt.toISOString(),
+      t.sprintId ? sprints.get(t.sprintId) : "",
     ]
       .map(cell)
       .join(","),

@@ -19,15 +19,17 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckSquare, Download, GripVertical, KanbanSquare, List, MessageSquare, Plus, Settings2, UserPlus, X } from "lucide-react";
+import { CalendarRange, CheckSquare, Download, GripVertical, KanbanSquare, List, MessageSquare, Plus, Settings2, UserPlus, X } from "lucide-react";
 import { assignTaskAction, createTaskAction, moveTaskAction } from "@/app/actions";
 import { today, weekStart, addDays } from "@/lib/dates";
 import { fold } from "@/lib/fold";
 import { useI18n } from "@/lib/i18n/client";
 import type { Board as BoardData, BoardTask } from "@/server/projects";
+import { BacklogView, SprintBar, SprintOptions } from "./backlog";
 import { Dialog, useRun, useToast } from "./client";
 import { Avatar, AvatarStack, DueBadge, EmptyState, PriorityIcon } from "./ui";
 
+export type View = "board" | "list" | "backlog";
 export type BoardPerms = { create: boolean; editAny: boolean; assignSelf: boolean; assignOthers: boolean; manage: boolean };
 type Column = BoardData["columns"][number];
 type Items = Record<string, string[]>;
@@ -62,7 +64,7 @@ export function Board({
   board: BoardData;
   me: string;
   perms: BoardPerms;
-  view: "board" | "list";
+  view: View;
 }) {
   const i = useI18n();
   const { m, fmt, plural } = i;
@@ -75,12 +77,18 @@ export function Board({
   const [creating, setCreating] = useState<string | null>(params.get("new") ? board.columns[0]?.id ?? null : null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [versions, setVersions] = useState<Record<string, number>>({});
+  // Sprint scope of the board and list: "" = all tasks, "backlog" = tasks in no sprint, or a sprint id. Starts on the running sprint.
+  const openSprints = board.sprints.filter((s) => s.state !== "closed");
+  const [scopePick, setScope] = useState<string>(openSprints.find((s) => s.state === "active")?.id ?? "");
+  const scope = view === "backlog" || !(scopePick === "backlog" || openSprints.some((s) => s.id === scopePick)) ? "" : scopePick;
+  const scopeSprint = openSprints.find((s) => s.id === scope);
 
   const people = board.people;
   const byId = useMemo(() => new Map(board.tasks.map((t) => [t.id, t])), [board.tasks]);
   const doneCols = useMemo(() => new Set(board.columns.filter((c) => c.category === "done").map((c) => c.id)), [board.columns]);
   const labels = useMemo(() => [...new Set(board.tasks.flatMap((t) => t.labels))].sort((a, b) => a.localeCompare(b, i.tag)), [board.tasks, i.tag]);
-  const visible = useMemo(() => applyFilters(board.tasks, filters, me, doneCols), [board.tasks, filters, me, doneCols]);
+  const scoped = useMemo(() => (scope ? board.tasks.filter((t) => (scope === "backlog" ? !t.sprintId : t.sprintId === scope)) : board.tasks), [board.tasks, scope]);
+  const visible = useMemo(() => applyFilters(scoped, filters, me, doneCols), [scoped, filters, me, doneCols]);
   const derived = useMemo(() => {
     const items: Items = Object.fromEntries(board.columns.map((c) => [c.id, [] as string[]]));
     for (const t of visible) items[t.columnId]?.push(t.id);
@@ -202,6 +210,13 @@ export function Board({
             >
               <List size={15} aria-hidden /> {m.board.viewList}
             </Link>
+            <Link
+              href={`/projects/${board.project.key}/backlog`}
+              aria-current={view === "backlog" ? "page" : undefined}
+              className="flex min-h-8 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium text-ink-2 aria-[current=page]:bg-brand-soft aria-[current=page]:text-ink"
+            >
+              <CalendarRange size={15} aria-hidden /> {m.board.viewBacklog}
+            </Link>
           </nav>
           <a href={`/projects/${board.project.key}/export`} className="btn btn-ghost" title={m.board.exportCsv} aria-label={m.board.exportCsv}>
             <Download size={16} aria-hidden />
@@ -225,6 +240,22 @@ export function Board({
         role="group"
         aria-label={m.board.filters}
       >
+        {view !== "backlog" && openSprints.length > 0 && (
+          <>
+            <label className="sr-only" htmlFor="f-sprint">
+              {m.sprint.scope}
+            </label>
+            <select id="f-sprint" className="input min-h-8 w-auto py-1 font-medium" value={scope} onChange={(e) => setScope(e.target.value)}>
+              {openSprints.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.state === "active" ? fmt(m.sprint.activeOption, { name: s.name }) : s.name}
+                </option>
+              ))}
+              <option value="backlog">{m.sprint.backlog}</option>
+              <option value="">{m.sprint.allTasks}</option>
+            </select>
+          </>
+        )}
         <label htmlFor="board-filter" className="sr-only">
           {m.board.filterText}
         </label>
@@ -300,7 +331,11 @@ export function Board({
         )}
       </div>
 
-      {!board.tasks.length && view === "list" ? (
+      {scopeSprint?.state === "active" && view === "board" && <SprintBar sprint={scopeSprint} tasks={scoped} isDone={(t) => doneCols.has(t.columnId)} />}
+
+      {view === "backlog" ? (
+        <BacklogView board={board} visible={visible} manage={perms.manage} canEdit={canEdit} openHref={openHref} />
+      ) : !board.tasks.length && view === "list" ? (
         <EmptyState title={m.board.emptyProjectTitle} lead={m.board.emptyProjectLead} icon={<KanbanSquare size={28} />}>
           {perms.create && (
             <button className="btn btn-primary" onClick={() => setCreating(board.columns[0]?.id ?? null)}>
@@ -326,7 +361,7 @@ export function Board({
         >
           <div className="relative -mx-4 flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:snap-none md:px-8">
             {board.columns.map((c) => (
-              <ColumnView key={c.id} column={c} name={i.columnName(c)} ids={items[c.id] ?? []} total={board.tasks.filter((t) => t.columnId === c.id).length} filtered={filtered}>
+              <ColumnView key={c.id} column={c} name={i.columnName(c)} ids={items[c.id] ?? []} total={scoped.filter((t) => t.columnId === c.id).length} filtered={filtered}>
                 {(items[c.id] ?? []).map((id) => {
                   const t = byId.get(id);
                   return t ? (
@@ -362,6 +397,7 @@ export function Board({
           board={board}
           me={me}
           perms={perms}
+          sprintId={scopeSprint?.id ?? null}
         />
       )}
     </div>
@@ -567,6 +603,7 @@ function CreateTaskDialog({
   board,
   me,
   perms,
+  sprintId,
 }: {
   open: boolean;
   columnId: string | null;
@@ -574,6 +611,7 @@ function CreateTaskDialog({
   board: BoardData;
   me: string;
   perms: BoardPerms;
+  sprintId: string | null;
 }) {
   const i = useI18n();
   const { m, fmt } = i;
@@ -600,6 +638,7 @@ function CreateTaskDialog({
               .map((l) => l.trim())
               .filter(Boolean),
             assigneeIds: fd.get("assignMe") === "on" ? [me] : [],
+            sprintId: String(fd.get("sprintId") ?? "") || null,
           };
           const r = await run(() => createTaskAction(input));
           if (r?.ok) {
@@ -656,6 +695,16 @@ function CreateTaskDialog({
           </label>
           <input id="t-est" name="estimate" type="number" min={0} max={1000} step="0.5" className="input" />
         </div>
+        {board.sprints.some((s) => s.state !== "closed") && (
+          <div>
+            <label className="label" htmlFor="t-sprint">
+              {m.sprint.label}
+            </label>
+            <select id="t-sprint" name="sprintId" className="input" defaultValue={sprintId ?? ""}>
+              <SprintOptions sprints={board.sprints} current={null} />
+            </select>
+          </div>
+        )}
         <div className="sm:col-span-2">
           <label className="label" htmlFor="t-labels">
             {m.task.labels} <span className="font-normal text-ink-3">({m.task.labelsHint})</span>

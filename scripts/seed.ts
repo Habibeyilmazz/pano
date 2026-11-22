@@ -11,6 +11,7 @@ import * as account from "../src/server/account";
 import * as admin from "../src/server/admin";
 import { loadCtx } from "../src/server/ctx";
 import * as projects from "../src/server/projects";
+import * as sprints from "../src/server/sprints";
 import * as tasks from "../src/server/tasks";
 
 export const DEMO_PASSWORD = "PanoDemo2026";
@@ -127,6 +128,7 @@ async function main() {
     { key: "MOB", name: "Mobil Uygulama", description: "iOS ve Android müşteri uygulaması, sürüm 2.4.", seeds: mob },
   ];
   const t0 = today();
+  const webTasks: { sd: Seed; taskId: string }[] = [];
   for (const def of projectDefs) {
     const { projectId } = await projects.createProject(adminCtx, { key: def.key, name: def.name, description: def.description });
     const cols = await projects.projectColumns(projectId);
@@ -145,6 +147,7 @@ async function main() {
         labels: sd.labels ?? [],
         assigneeIds: sd.who.map((w) => ids[w]),
       });
+      if (def.key === "WEB") webTasks.push({ sd, taskId });
       for (const [text, done] of sd.check ?? []) {
         await tasks.addChecklistItem(reporter, { taskId, text });
         if (done) {
@@ -161,7 +164,26 @@ async function main() {
       await db.update(s.activities).set({ createdAt: created }).where(sql`${s.activities.taskId} = ${taskId} and ${s.activities.type} = 'created'`);
     }
   }
+  await seedSprints(adminCtx, webTasks, t0);
   console.log(`Demo company ready. Sign in as ayse@ornek.test / ${DEMO_PASSWORD}`);
+}
+
+/** WEB works in two-week sprints: one completed, one running, one planned. MOB does plain kanban. */
+async function seedSprints(ctx: NonNullable<Awaited<ReturnType<typeof loadCtx>>>, list: { sd: Seed; taskId: string }[], t0: string) {
+  const db = await getDb();
+  const { projectId } = (await db.select({ projectId: s.tasks.projectId }).from(s.tasks).where(eq(s.tasks.id, list[0].taskId)))[0];
+  const plan = async (sprintId: string, pick: (sd: Seed) => boolean) => {
+    for (const { sd, taskId } of list) if (pick(sd)) await db.update(s.tasks).set({ sprintId }).where(eq(s.tasks.id, taskId));
+  };
+  const one = await sprints.createSprint(ctx, { projectId, startDate: addDays(t0, -22), endDate: addDays(t0, -9) });
+  await plan(one.sprintId, (sd) => sd.doneAgo !== undefined && sd.doneAgo >= 9 && sd.doneAgo <= 16);
+  await sprints.startSprint(ctx, { sprintId: one.sprintId, startDate: addDays(t0, -22), endDate: addDays(t0, -9), goal: "Tasarım dili ve temel sayfalar" });
+  await sprints.completeSprint(ctx, { sprintId: one.sprintId });
+  const two = await sprints.createSprint(ctx, { projectId });
+  const three = await sprints.createSprint(ctx, { projectId, startDate: addDays(t0, 6), endDate: addDays(t0, 19), goal: "Canlıya çıkış" });
+  await plan(two.sprintId, (sd) => (sd.doneAgo !== undefined && sd.doneAgo < 9) || (sd.col < 3 && sd.due !== undefined && sd.due <= 6));
+  await plan(three.sprintId, (sd) => sd.col < 3 && sd.due !== undefined && sd.due > 6);
+  await sprints.startSprint(ctx, { sprintId: two.sprintId, startDate: addDays(t0, -8), endDate: addDays(t0, 5), goal: "Yeni ana sayfa ve yasal metinler yayına hazır" });
 }
 
 main().then(

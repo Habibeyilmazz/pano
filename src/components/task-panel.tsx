@@ -22,6 +22,7 @@ import { isInternalHref } from "@/lib/links";
 import { useI18n } from "@/lib/i18n/client";
 import type { TaskDetail } from "@/server/tasks";
 import { activityText } from "./activity";
+import { SprintOptions } from "./backlog";
 import { CloseButton, useRun, useToast } from "./client";
 import { Avatar, PriorityIcon } from "./ui";
 
@@ -298,7 +299,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
                   {detail.activity.map((a) => (
                     <li key={a.id} className="text-sm">
                       <span className="font-medium">{person(a.actorId)?.name ?? m.common.unknownUser}</span>{" "}
-                      <span className="text-ink-2">{activityText(a, i, people, detail.columns)}</span>{" "}
+                      <span className="text-ink-2">{activityText(a, i, people, detail.columns, detail.sprints)}</span>{" "}
                       <time className="text-xs text-ink-3" dateTime={new Date(a.createdAt).toISOString()} title={i.dateTime(a.createdAt)}>
                         {i.ago(a.createdAt)}
                       </time>
@@ -333,6 +334,19 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
                 </select>
                 <span className="sr-only">{column ? i.columnName(column) : ""}</span>
               </SideField>
+              {(detail.sprints.length > 0 || t.sprintId) && (
+                <SideField label={m.sprint.label} htmlFor="f-sprint-task">
+                  <select
+                    id="f-sprint-task"
+                    className="input min-h-8 py-1"
+                    value={t.sprintId ?? ""}
+                    disabled={!editable || pending}
+                    onChange={(e) => save({ sprintId: e.target.value || null })}
+                  >
+                    <SprintOptions sprints={detail.sprints} current={t.sprintId} />
+                  </select>
+                </SideField>
+              )}
 
               <div className="py-1.5">
                 <span className="text-[13px] text-ink-2">{m.task.assignees}</span>

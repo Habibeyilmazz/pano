@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { addDays, daysBetween, today } from "@/lib/dates";
+import { exportCsv } from "@/server/export";
 import * as projects from "@/server/projects";
 import * as sprints from "@/server/sprints";
 import * as tasks from "@/server/tasks";
@@ -79,6 +80,7 @@ describe("sprints", () => {
     expect(await sprintOf(open.taskId)).toBe(two.sprintId);
     expect(await sprintOf(copy.taskId)).toBe(two.sprintId);
     expect(await sprintOf(done.taskId)).toBe(one.sprintId);
+    expect((await exportCsv(C.ctx.admin, "WEB", () => "", ["k"])).split("\r\n").find((l) => l.includes("Biten iş"))).toMatch(/"Bir"$/);
 
     // A completed sprint takes no new tasks and cannot be deleted or restarted.
     await expectCode(tasks.updateTask(C.ctx.admin, { taskId: open.taskId, version: await versionOf(C.ctx.admin, open.key), sprintId: one.sprintId }), "sprint_state");
