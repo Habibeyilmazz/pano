@@ -182,7 +182,7 @@ test("company sign-up, team setup, board work and the people views", async ({ pa
 });
 
 test("another company cannot see the first company's board", async ({ browser }) => {
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext({ colorScheme: "dark" });
   const page = await ctx.newPage();
   await page.goto("/signup");
   await page.getByLabel("Şirket adı").fill("Rakip Ltd.");
@@ -194,6 +194,8 @@ test("another company cannot see the first company's board", async ({ browser })
   for (const url of ["/projects/API", "/projects/API?task=API-1", "/projects/API/settings"]) {
     await page.goto(url);
     await expect(page.getByRole("heading", { name: "Sayfa bulunamadı" })).toBeVisible();
+    // A dark-mode user's 404 page is dark too (the inline theme script does not run there).
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   }
   const res = await page.request.get("/projects/API/export");
   expect(res.status()).toBe(404);

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Onest } from "next/font/google";
-import { Toaster } from "@/components/client";
+import { ThemeFallback, Toaster } from "@/components/client";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getI18n } from "@/lib/i18n/server";
 import { getCtx } from "@/lib/session";
@@ -31,6 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-dvh font-sans antialiased">
+        <ThemeFallback />
         <I18nProvider locale={locale}>
           <Toaster>{children}</Toaster>
         </I18nProvider>

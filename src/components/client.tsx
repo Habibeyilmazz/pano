@@ -4,6 +4,15 @@ import { X } from "lucide-react";
 import type { Result } from "@/app/actions";
 import { useI18n } from "@/lib/i18n/client";
 
+/** Next renders 404 pages on the client, where the inline theme script in the root layout never runs; resolve "system" here as well. */
+export function ThemeFallback() {
+  useEffect(() => {
+    const d = document.documentElement;
+    if (d.dataset.theme === "system") d.dataset.theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }, []);
+  return null;
+}
+
 type Toast = { id: number; text: string; tone: "ok" | "error" };
 const ToastCtx = createContext<(text: string, tone?: Toast["tone"]) => void>(() => {});
 
