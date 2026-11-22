@@ -207,7 +207,7 @@ export async function getBoard(ctx: Ctx, key: string) {
       })
       .from(s.tasks)
       .where(and(eq(s.tasks.projectId, project.id), eq(s.tasks.workspaceId, ctx.workspaceId)))
-      .orderBy(asc(s.tasks.position)),
+      .orderBy(asc(s.tasks.position), asc(s.tasks.number)),
     projectPeople(ctx, project.id),
     projectSprints(project.id),
   ]);

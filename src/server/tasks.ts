@@ -68,7 +68,6 @@ function nextPosition(siblings: { position: number }[], index: number) {
   const i = Math.max(0, Math.min(index, siblings.length));
   const prev = siblings[i - 1]?.position;
   const next = siblings[i]?.position;
-  // shortcut: float midpoints allow ~50 inserts at one spot before precision runs out; renumber a column then.
   if (prev === undefined && next === undefined) return 1000;
   if (prev === undefined) return next! - 1000;
   if (next === undefined) return prev + 1000;
@@ -186,13 +185,22 @@ export async function moveTask(ctx: Ctx, input: unknown) {
       .select({ position: s.tasks.position })
       .from(s.tasks)
       .where(and(eq(s.tasks.columnId, to.id), ne(s.tasks.id, task.id)))
-      .orderBy(asc(s.tasks.position));
+      .orderBy(asc(s.tasks.position), asc(s.tasks.number));
+    let position = nextPosition(siblings, data.index);
+    // Midpoints run out of float precision after ~50 drops into one slot (or neighbours share a
+    // position after concurrent moves): space the column out again, in its current order.
+    if (siblings.some((x) => x.position === position)) {
+      await tx.execute(sql`update ${s.tasks} set position = r.n * 1000 from (
+        select id, row_number() over (order by position, number) as n from ${s.tasks} where column_id = ${to.id} and id <> ${task.id}
+      ) r where ${s.tasks}.id = r.id`);
+      position = nextPosition(siblings.map((_, i) => ({ position: (i + 1) * 1000 })), data.index);
+    }
     const completedAt = to.category === "done" ? (from.category === "done" ? task.completedAt : new Date()) : null;
     const [row] = await tx
       .update(s.tasks)
       .set({
         columnId: to.id,
-        position: nextPosition(siblings, data.index),
+        position,
         completedAt,
         version: sql`${s.tasks.version} + 1`,
         updatedAt: new Date(),
