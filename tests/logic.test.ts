@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { addDays, today, weekStart } from "@/lib/dates";
 import { fold } from "@/lib/fold";
+import { isInternalHref } from "@/lib/links";
 import { catalogs, makeI18n } from "@/lib/i18n";
 import * as account from "@/server/account";
 import * as admin from "@/server/admin";
@@ -210,5 +211,12 @@ describe("i18n", () => {
   it("weeks start on Monday", () => {
     expect(weekStart("2026-11-22")).toBe("2026-11-16");
     expect(addDays("2026-02-28", 1)).toBe("2026-03-01");
+  });
+});
+
+describe("Markdown links", () => {
+  it("open only same-site paths in the app; //host and /\\host are external", () => {
+    expect(isInternalHref("/team/abc")).toBe(true);
+    for (const h of ["//evil.test/x", "/\\evil.test", "https://evil.test", "", undefined]) expect(isInternalHref(h)).toBe(false);
   });
 });

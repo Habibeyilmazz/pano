@@ -18,6 +18,7 @@ import {
   updateTaskAction,
 } from "@/app/actions";
 import { fold } from "@/lib/fold";
+import { isInternalHref } from "@/lib/links";
 import { useI18n } from "@/lib/i18n/client";
 import type { TaskDetail } from "@/server/tasks";
 import { activityText } from "./activity";
@@ -45,7 +46,7 @@ function Markdown({ text, people }: { text: string; people: Person[] }) {
         remarkPlugins={[remarkGfm]}
         components={{
           a: ({ href, children }) =>
-            href?.startsWith("/") ? (
+            isInternalHref(href) ? (
               <Link href={href}>{children}</Link>
             ) : (
               <a href={href} target="_blank" rel="noopener noreferrer nofollow">
