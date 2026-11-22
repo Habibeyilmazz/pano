@@ -44,14 +44,14 @@ type Seed = {
 
 const web: Seed[] = [
   { title: "Ana sayfa tasarımını yenile", col: 1, pri: "high", who: ["zeynep"], due: 3, pts: 8, labels: ["tasarım"], desc: "Yeni marka kılavuzuna göre ana sayfa.\n\n- Hero alanı\n- Müşteri logoları\n- İletişim çağrısı", check: [["Taslak çizimler", true], ["Renk paleti onayı", true], ["Mobil görünüm", false]], comments: [["mehmet", "@zeynep cuma günü müşteriyle paylaşabilir miyiz?"], ["zeynep", "Evet, perşembe akşamı hazır olur."]] },
-  { title: "İletişim formuna spam koruması ekle", col: 0, pri: "medium", who: ["emre"], due: 6, pts: 3, labels: ["güvenlik"] },
+  { title: "İletişim formuna spam koruması ekle", col: 3, pri: "medium", who: ["emre"], pts: 3, labels: ["güvenlik"], doneAgo: 6 },
   { title: "Blog sayfalarında yavaş yüklenme sorunu", col: 1, pri: "highest", who: ["emre", "burak"], due: -2, pts: 5, labels: ["hata", "performans"], desc: "Blog listesi 4 saniyede açılıyor. Görseller optimize edilmeli ve sayfalama eklenmeli.", comments: [["burak", "Görselleri WebP'ye çevirdim, şimdi sorguya bakıyorum."]] },
   { title: "KVKK aydınlatma metnini güncelle", col: 2, pri: "high", who: ["elif", "ayse"], due: 1, pts: 2, labels: ["hukuk"] },
   { title: "Çerez onay penceresi", col: 3, pri: "medium", who: ["emre"], pts: 3, labels: ["hukuk"], doneAgo: 2 },
   { title: "Ürün karşılaştırma tablosu", col: 0, pri: "medium", who: [], due: 12, pts: 5, labels: ["tasarım"] },
   { title: "İngilizce sürüm için çeviri akışı", col: 0, pri: "low", who: ["elif"], pts: 8, labels: ["içerik"] },
   { title: "Site haritası ve robots.txt", col: 3, pri: "low", who: ["burak"], pts: 1, labels: ["seo"], doneAgo: 4 },
-  { title: "Arama kutusunda Türkçe karakter hatası", col: 2, pri: "high", who: ["burak"], due: 0, pts: 2, labels: ["hata"], desc: "\"İstanbul\" araması \"istanbul\" ile eşleşmiyor." },
+  { title: "Arama kutusunda Türkçe karakter hatası", col: 3, pri: "high", who: ["burak"], doneAgo: 1, pts: 2, labels: ["hata"], desc: "\"İstanbul\" araması \"istanbul\" ile eşleşmiyor." },
   { title: "Kariyer sayfasına ilan filtresi", col: 0, pri: "medium", who: ["ismail"], due: 9, pts: 3, labels: ["içerik"] },
   { title: "Müşteri yorumları bölümü", col: 3, pri: "medium", who: ["zeynep"], pts: 3, labels: ["tasarım"], doneAgo: 9 },
   { title: "Sunucu yedeklemelerini doğrula", col: 0, pri: "highest", who: ["mehmet"], due: -5, pts: 2, labels: ["altyapı"] },
@@ -156,7 +156,8 @@ async function main() {
         }
       }
       for (const [who, body] of sd.comments ?? []) await tasks.addComment((await loadCtx(ids[who]))!, { taskId, body });
-      const created = new Date(Date.now() - ((sd.doneAgo ?? 0) + 5 + (sd.pts ?? 1)) * 864e5);
+      // Old enough that the running sprint's work was all planned before it started (a flat start on the burndown).
+      const created = new Date(Date.now() - ((sd.doneAgo ?? 0) + 9 + (sd.pts ?? 1)) * 864e5);
       await db
         .update(s.tasks)
         .set({ createdAt: created, completedAt: sd.doneAgo !== undefined ? new Date(Date.now() - sd.doneAgo * 864e5) : null })

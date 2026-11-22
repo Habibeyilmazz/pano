@@ -30,7 +30,7 @@ import { Dialog, useRun, useToast } from "./client";
 import { Avatar, AvatarStack, DueBadge, EmptyState, PriorityIcon } from "./ui";
 
 export type View = "board" | "list" | "backlog";
-export type BoardPerms = { create: boolean; editAny: boolean; assignSelf: boolean; assignOthers: boolean; manage: boolean };
+export type BoardPerms = { create: boolean; editAny: boolean; assignSelf: boolean; assignOthers: boolean; manage: boolean; reports: boolean };
 type Column = BoardData["columns"][number];
 type Items = Record<string, string[]>;
 type Filters = { mine: boolean; unassigned: boolean; overdue: boolean; week: boolean; people: string[]; label: string; priority: string; text: string };
@@ -335,7 +335,14 @@ export function Board({
       {scopeSprint?.state === "active" && view === "board" && <SprintBar sprint={scopeSprint} tasks={scoped} isDone={(t) => doneCols.has(t.columnId)} />}
 
       {view === "backlog" ? (
-        <BacklogView board={board} visible={visible} manage={perms.manage} canEdit={canEdit} openHref={openHref} />
+        <BacklogView
+          board={board}
+          visible={visible}
+          manage={perms.manage}
+          canEdit={canEdit}
+          openHref={openHref}
+          reportHref={perms.reports ? `/dashboard?project=${board.project.key}` : undefined}
+        />
       ) : !board.tasks.length && view === "list" ? (
         <EmptyState title={m.board.emptyProjectTitle} lead={m.board.emptyProjectLead} icon={<KanbanSquare size={28} />}>
           {perms.create && (

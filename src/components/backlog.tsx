@@ -78,12 +78,15 @@ export function BacklogView({
   manage,
   canEdit,
   openHref,
+  reportHref,
 }: {
   board: BoardData;
   visible: BoardTask[];
   manage: boolean;
   canEdit: (t: BoardTask) => boolean;
   openHref: (key: string) => string;
+  /** Overview page with this project's burndown, for people who may view reports. */
+  reportHref?: string;
 }) {
   const i = useI18n();
   const { m, fmt, plural } = i;
@@ -147,6 +150,11 @@ export function BacklogView({
                   <span>
                     {plural(m.sprint.tasks, all.length)} · {fmt(m.sprint.points, { n: i.num(points(all)) })}
                   </span>
+                  {sp.state === "active" && reportHref && (
+                    <Link href={reportHref} className="font-medium text-brand underline-offset-2 hover:underline">
+                      {m.sprint.burndownLink}
+                    </Link>
+                  )}
                 </p>
                 {sp.goal && (
                   <p className="mt-1 text-sm">

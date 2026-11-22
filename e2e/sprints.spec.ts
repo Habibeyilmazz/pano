@@ -66,6 +66,17 @@ test("a team lead plans a sprint, runs it on the board and completes it", async 
   await expect(page.getByText("SPR-1, Tamamlandı sütununa taşındı")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.getByText("1/2 görev bitti")).toBeVisible();
+
+  // The planning tab links to the sprint's burndown on Overview.
+  await page.getByRole("link", { name: "Planlama" }).click();
+  await page.getByRole("link", { name: "Kalan iş grafiği" }).click();
+  const report = page.getByRole("region", { name: /Sprint 1/ });
+  await expect(report.getByText("Giriş akışı hazır")).toBeVisible();
+  await expect(report.getByRole("definition").filter({ hasText: "1/2" })).toBeVisible();
+  await expect(report.getByText("Plana uygun")).toBeVisible();
+  await report.getByText("Tablo olarak göster").click();
+  await expect(report.getByRole("table")).toBeVisible();
+  await page.goto("/projects/SPR/backlog", { waitUntil: "networkidle" });
   await page.getByRole("link", { name: "Planlama" }).click();
   await sprint.getByRole("button", { name: "Sprinti tamamla" }).click();
   await expect(page.getByRole("dialog").getByText("1 görev bitti, 1 görev bitmedi.")).toBeVisible();

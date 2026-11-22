@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SprintReport } from "@/components/burndown";
 import { Avatar, PageHeader, PriorityIcon, taskHref } from "@/components/ui";
 import { today } from "@/lib/dates";
 import { getI18n } from "@/lib/i18n/server";
@@ -38,6 +39,18 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </Link>
         ))}
       </nav>
+      {d.sprints.length > 0 && (
+        <section aria-labelledby="sprints" className="mb-4">
+          <h2 id="sprints" className="section-title mb-2">
+            {m.dashboard.sprints}
+          </h2>
+          <div className="grid grid-cols-1 gap-4">
+            {d.sprints.map((r) => (
+              <SprintReport key={r.sprint.id} r={r} i={i} />
+            ))}
+          </div>
+        </section>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <section className="card p-5" aria-labelledby="by-status">
           <h2 id="by-status" className="section-title">
@@ -124,9 +137,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <thead className="text-left text-xs text-ink-2">
                 <tr>
                   <th className="pb-2 font-medium">{m.admin.name}</th>
-                  <th className="pb-2 text-right font-medium">{m.dashboard.openTasks}</th>
-                  <th className="pb-2 text-right font-medium">{m.dashboard.openPoints}</th>
-                  <th className="w-1/3 pb-2" aria-hidden />
+                  <th className="pb-2 pl-2 text-right font-medium">{m.dashboard.openTasks}</th>
+                  <th className="pb-2 pl-2 text-right font-medium">{m.dashboard.openPoints}</th>
+                  <th className="hidden w-1/3 pb-2 sm:table-cell" aria-hidden />
                 </tr>
               </thead>
               <tbody>
@@ -140,12 +153,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                           <span className="truncate">{w.name}</span>
                         </Link>
                       </td>
-                      <td className="py-2 text-right tabular-nums">
+                      <td className="whitespace-nowrap py-2 pl-2 text-right tabular-nums">
                         {open}
                         {w.overdue > 0 && <span className="ml-1.5 tag bg-danger-soft text-danger">{i.plural(m.team.overdue, w.overdue)}</span>}
                       </td>
-                      <td className="py-2 text-right tabular-nums">{i.num(w.openPoints)}</td>
-                      <td className="py-2 pl-3" aria-hidden>
+                      <td className="py-2 pl-2 text-right tabular-nums">{i.num(w.openPoints)}</td>
+                      <td className="hidden py-2 pl-3 sm:table-cell" aria-hidden>
                         <div className="h-2 rounded-full bg-surface-2">
                           <div className="h-2 rounded-full bg-brand" style={{ width: `${(open / maxLoad) * 100}%` }} />
                         </div>

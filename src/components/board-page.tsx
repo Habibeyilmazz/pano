@@ -25,6 +25,7 @@ export async function BoardPage({ params, searchParams, view }: { params: Promis
             assignSelf: can(ctx, "tasks.assign_self"),
             assignOthers: can(ctx, "tasks.assign_others"),
             manage: can(ctx, "projects.manage"),
+            reports: can(ctx, "reports.view"),
           }}
         />
       </Suspense>
