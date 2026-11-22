@@ -87,11 +87,12 @@ The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tas
 - **Starting** a sprint (one at a time per project, also enforced by the database) makes the board show only that sprint's tasks, with a strip showing the dates, days left, goal and progress. A picker above the board switches to another sprint, the backlog or all tasks. A task created while the board shows a sprint joins it.
 - **Completing** a sprint keeps its done tasks as its record and moves the unfinished ones to the backlog or to a planned sprint. Completed sprints are listed with what they delivered (tasks and points), which gives the team its velocity. Only planned sprints can be deleted; their tasks return to the backlog.
 - The CSV export has a Sprint column.
+- **Burndown**: the Overview page shows each running sprint (of the projects you can see) with remaining work, scope, tasks done, how far ahead of or behind the ideal line it is, and a day-by-day burndown chart (also as a table). It counts points, or tasks when nothing in the sprint is estimated. Work added mid-sprint counts from the day it was added (read from the task history); work taken out of the sprint is not counted. The running sprint on the Planlama tab links to it.
 
 **Seeing what everyone is doing**
 - **My work (İşlerim)**: my tasks grouped in progress / to do / recently done, overdue first.
 - **Team (Ekip)**: one row per person with what they are doing now, what is next and what they finished this week, with open-task and point counts and overdue warnings, filterable by project. Each person has a profile with the same view plus their recent activity.
-- **Overview (Özet)** for people with "view reports": tasks by status, done per week (8 weeks), overdue list and workload per person.
+- **Overview (Özet)** for people with "view reports": running sprints with their burndown, tasks by status, done per week (8 weeks), overdue list and workload per person.
 
 **Extras**
 - In-app **notifications** with an unread badge: assigned to you, mentioned, due tomorrow.
@@ -159,7 +160,7 @@ Then open `/signup` to create your company (the demo seed is not run in Docker).
 
 Not built yet, in rough priority order:
 - Email delivery for invites, resets and notifications (SMTP behind `src/server/mail.ts`).
-- Sprint reports: a burndown chart and sprint progress on the Overview page (today the Planlama tab shows progress and what each completed sprint delivered).
+- Burndown for completed sprints (unfinished work moved out at completion is not recorded per day today), and a scope-change line on the burndown.
 - Task templates (copying a task covers the simplest case today).
 - Editing and deleting comments; attachments.
 - Realtime board updates (today the board refreshes after your own actions and on navigation; stale edits are caught by versioning).

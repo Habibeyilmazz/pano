@@ -5,6 +5,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added (feature round: burndown)
+
+- **Sprint burndown on the Overview page**, the first Roadmap item. For each running sprint in the projects the viewer can see: dates and days left, goal, remaining work, scope, tasks done, an "ahead of / behind plan" tag, and a day-by-day burndown chart (remaining vs. an ideal line from the sprint's starting work to zero on the end date, with a "today" marker). A "Show as table" disclosure gives the same numbers for screen readers. The running sprint on the Planlama tab links to it for people with "view reports". Teams without a running sprint see the page as before.
+- Counting rules (`burndown()` in `src/server/sprints.ts`, pure and unit-tested): points when any task in the sprint has an estimate (unestimated tasks count zero), otherwise tasks. A task counts from the day it joined the sprint (its latest `sprintId` history entry, else its creation) until the day it was finished, by calendar day in the app time zone. A sprint that runs past its end date keeps going to today with the ideal at zero.
+- Tests: two pure cases (Istanbul-midnight boundary, scope added mid-sprint, unestimated tasks, task counting, overrun) and one service case (join day from task history, a planned sprint not shown, the restricted project's sprint hidden from someone with only "view reports"), checked to fail when the history lookup is broken; tenant isolation checks the dashboard carries no other company's sprint; `e2e/sprints.spec.ts` follows the Planlama link to the chart and opens the table.
+- Demo seed: the running WEB sprint's tasks are all older than the sprint (tasks were created 4 days earlier than before) and two more WEB tasks are done ("İletişim formuna spam koruması", "Arama kutusunda Türkçe karakter hatası"), so the burndown reads like a real sprint, a bit behind plan.
+
+### Fixed (feature round)
+
+- Overview's workload table on phones squeezed "Open points" to one letter per line and wrapped the counts; the bar column now hides below 640px and the counts stay on one line.
+
+### Feature round notes (for the next agent)
+
+- Only running sprints get a burndown. A completed sprint cannot be redrawn faithfully: `completeSprint` moves unfinished tasks out without a history entry, so their past days are unknown. Logging those moves (or snapshotting per-day remaining) is the way to add it.
+- Tasks reopened after being done count as remaining on every day (their `completedAt` is cleared); tasks removed from the sprint vanish from earlier days too. Both are noted on the page as "current scope" rules, not hidden.
+- Verified in a seeded production build at 1440px (Turkish, light) and 390px (English, dark): no horizontal overflow; README screenshots refreshed with `scripts/screenshots.ts`.
+- An existing `.data/pglite` keeps its old demo data (seed runs only on an empty database): delete it to see the new demo sprint. Not a bug, unchanged.
+- Gaps carried over: touch drag still unverified on a real phone; search still shows the first 50 matches without paging; commits carry no Co-Authored-By line because a system instruction in these sessions forbids attribution lines.
+
 ### Fixed (reliability round)
 
 Each bug below was reproduced by a failing test first (`tests/reliability.test.ts`, `e2e/concurrency.spec.ts`), then fixed.
