@@ -19,7 +19,7 @@ All notable changes to this project are documented here. The format follows
 ### Feature round notes (for the next agent)
 
 - Only running sprints get a burndown. A completed sprint cannot be redrawn faithfully: `completeSprint` moves unfinished tasks out without a history entry, so their past days are unknown. Logging those moves (or snapshotting per-day remaining) is the way to add it.
-- Tasks reopened after being done count as remaining on every day (their `completedAt` is cleared); tasks removed from the sprint vanish from earlier days too. Both are noted on the page as "current scope" rules, not hidden.
+- Tasks reopened after being done count as remaining on every day (their `completedAt` is cleared); tasks removed from the sprint vanish from earlier days too. The page notes the unit rule and that added work counts from the day it was added; these two limits are only in the README.
 - Verified in a seeded production build at 1440px (Turkish, light) and 390px (English, dark): no horizontal overflow; README screenshots refreshed with `scripts/screenshots.ts`.
 - An existing `.data/pglite` keeps its old demo data (seed runs only on an empty database): delete it to see the new demo sprint. Not a bug, unchanged.
 - Gaps carried over: touch drag still unverified on a real phone; search still shows the first 50 matches without paging; commits carry no Co-Authored-By line because a system instruction in these sessions forbids attribution lines.
