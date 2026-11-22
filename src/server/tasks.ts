@@ -385,7 +385,10 @@ export async function getTaskDetail(ctx: Ctx, key: string) {
 
 export type TaskDetail = Awaited<ReturnType<typeof getTaskDetail>>;
 
-export async function searchTasks(ctx: Ctx, q: string) {
+export const SEARCH_PAGE = 50;
+
+/** One page (0-based) of matches, newest change first. */
+export async function searchTasks(ctx: Ctx, q: string, page = 0) {
   const needle = fold(q.trim()).slice(0, 100);
   if (!needle) return [];
   const ids = await visibleProjectIds(ctx);
@@ -403,13 +406,14 @@ export async function searchTasks(ctx: Ctx, q: string) {
       category: s.columns.category,
       columnName: s.columns.name,
       columnKey: s.columns.defaultKey,
-      /** All matches; only the first 50 are returned. */
+      /** All matches, across pages. */
       total: sql<number>`(count(*) over ())::int`,
     })
     .from(s.tasks)
     .innerJoin(s.projects, eq(s.projects.id, s.tasks.projectId))
     .innerJoin(s.columns, eq(s.columns.id, s.tasks.columnId))
     .where(and(eq(s.tasks.workspaceId, ctx.workspaceId), inArray(s.tasks.projectId, ids), like(s.tasks.searchText, `%${escaped}%`)))
-    .orderBy(desc(s.tasks.updatedAt))
-    .limit(50);
+    .orderBy(desc(s.tasks.updatedAt), asc(s.tasks.id))
+    .limit(SEARCH_PAGE)
+    .offset(Math.max(0, Math.floor(page)) * SEARCH_PAGE);
 }

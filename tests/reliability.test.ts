@@ -128,5 +128,8 @@ describe("many tasks", () => {
     const found = await tasks.searchTasks(C.ctx.admin, "gecikmiş yığın");
     expect(found.length).toBe(50);
     expect(found[0].total).toBe(55);
+    const rest = await tasks.searchTasks(C.ctx.admin, "gecikmiş yığın", 1);
+    expect(rest.map((t) => t.total)).toEqual([55, 55, 55, 55, 55]);
+    expect(new Set([...found, ...rest].map((t) => t.id)).size).toBe(55);
   });
 });

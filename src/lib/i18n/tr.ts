@@ -491,6 +491,9 @@ export const tr = {
     empty: "“{q}” ile eşleşen görev yok.",
     hint: "Görev anahtarı, başlık, açıklama ya da etikette arar. Türkçe karakterleri yazmak zorunda değilsiniz.",
     results: { one: "{n} sonuç", other: "{n} sonuç" },
+    range: "{from}–{to} arası gösteriliyor.",
+    newer: "Önceki sayfa",
+    older: "Sonraki sayfa",
   },
   shortcuts: {
     title: "Klavye kısayolları",

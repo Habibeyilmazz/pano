@@ -492,6 +492,9 @@ export const en: typeof tr = {
     empty: "No tasks match “{q}”.",
     hint: "Searches task keys, titles, descriptions and labels. Turkish letters are optional.",
     results: { one: "{n} result", other: "{n} results" },
+    range: "Showing {from}–{to}.",
+    newer: "Previous page",
+    older: "Next page",
   },
   shortcuts: {
     title: "Keyboard shortcuts",
