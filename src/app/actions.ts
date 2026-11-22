@@ -11,6 +11,7 @@ import { isLocale } from "@/lib/i18n";
 import { clientIp, getCtx, SESSION_COOKIE, setLocaleCookie, setSessionCookie } from "@/lib/session";
 import * as account from "@/server/account";
 import * as admin from "@/server/admin";
+import { sendAccessLink } from "@/server/mail";
 import type { Ctx } from "@/server/ctx";
 import * as notifications from "@/server/notifications";
 import * as projects from "@/server/projects";
@@ -105,7 +106,10 @@ export async function createUserAction(input: unknown) {
   const base = await origin();
   return run(async (ctx) => {
     const { userId, inviteToken } = await admin.createUser(ctx, input);
-    return { userId, inviteUrl: inviteToken ? `${base}/invite/${inviteToken}` : null };
+    const url = inviteToken ? `${base}/invite/${inviteToken}` : null;
+    const u = input as { email: string; name: string; locale: string };
+    const emailed = url ? await sendAccessLink({ to: u.email, name: u.name, url, kind: "invite", locale: u.locale }) : false;
+    return { userId, inviteUrl: url, emailed };
   });
 }
 export async function updateUserAction(input: unknown) {

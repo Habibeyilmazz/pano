@@ -118,17 +118,17 @@ export async function projectColumns(projectId: string) {
 }
 
 const columnFields = {
-  name: z.string().trim().min(1).max(40),
+  /** null keeps the translated default name of a built-in column */
+  name: z.string().trim().min(1).max(40).nullable(),
   category: z.enum(CATEGORIES),
   wipLimit: z.number().int().min(1).max(999).nullable(),
 };
 
 export async function addColumn(ctx: Ctx, input: unknown) {
   need(ctx, "projects.manage");
-  const data = parse(z.object({ projectId: z.string().uuid(), ...columnFields }), input);
+  const data = parse(z.object({ projectId: z.string().uuid(), ...columnFields, name: columnFields.name.unwrap() }), input);
   const p = await getProject(ctx, { id: data.projectId });
   const cols = await projectColumns(p.id);
-  const db = await getDb();
   const doneAt = cols.findIndex((c) => c.category === "done");
   // New working columns go before the first "done" column; everything after shifts right.
   const position = data.category !== "done" && doneAt >= 0 ? cols[doneAt].position : cols.length;
@@ -137,7 +137,7 @@ export async function addColumn(ctx: Ctx, input: unknown) {
       .update(s.columns)
       .set({ position: sql`${s.columns.position} + 1` })
       .where(and(eq(s.columns.projectId, p.id), sql`${s.columns.position} >= ${position}`));
-    await tx.insert(s.columns).values({ workspaceId: ctx.workspaceId, projectId: p.id, position, ...data });
+    await tx.insert(s.columns).values({ name: data.name, category: data.category, wipLimit: data.wipLimit, workspaceId: ctx.workspaceId, projectId: p.id, position });
   });
 }
 
@@ -198,10 +198,10 @@ export async function getBoard(ctx: Ctx, key: string) {
         searchText: s.tasks.searchText,
         reporterId: s.tasks.reporterId,
         createdAt: s.tasks.createdAt,
-        assigneeIds: sql<string[]>`coalesce((select array_agg(a.user_id::text order by a.user_id) from ${s.taskAssignees} a where a.task_id = ${s.tasks.id}), '{}')`,
-        checklistTotal: sql<number>`(select count(*)::int from ${s.checklistItems} c where c.task_id = ${s.tasks.id})`,
-        checklistDone: sql<number>`(select count(*)::int from ${s.checklistItems} c where c.task_id = ${s.tasks.id} and c.done)`,
-        commentCount: sql<number>`(select count(*)::int from ${s.comments} c where c.task_id = ${s.tasks.id})`,
+        assigneeIds: sql<string[]>`coalesce((select array_agg(a.user_id::text order by a.user_id) from ${s.taskAssignees} a where a.task_id = ${s.tasks}.id), '{}')`,
+        checklistTotal: sql<number>`(select count(*)::int from ${s.checklistItems} c where c.task_id = ${s.tasks}.id)`,
+        checklistDone: sql<number>`(select count(*)::int from ${s.checklistItems} c where c.task_id = ${s.tasks}.id and c.done)`,
+        commentCount: sql<number>`(select count(*)::int from ${s.comments} c where c.task_id = ${s.tasks}.id)`,
       })
       .from(s.tasks)
       .where(and(eq(s.tasks.projectId, project.id), eq(s.tasks.workspaceId, ctx.workspaceId)))

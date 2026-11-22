@@ -45,7 +45,7 @@ const web: Seed[] = [
   { title: "Ana sayfa tasarımını yenile", col: 1, pri: "high", who: ["zeynep"], due: 3, pts: 8, labels: ["tasarım"], desc: "Yeni marka kılavuzuna göre ana sayfa.\n\n- Hero alanı\n- Müşteri logoları\n- İletişim çağrısı", check: [["Taslak çizimler", true], ["Renk paleti onayı", true], ["Mobil görünüm", false]], comments: [["mehmet", "@zeynep cuma günü müşteriyle paylaşabilir miyiz?"], ["zeynep", "Evet, perşembe akşamı hazır olur."]] },
   { title: "İletişim formuna spam koruması ekle", col: 0, pri: "medium", who: ["emre"], due: 6, pts: 3, labels: ["güvenlik"] },
   { title: "Blog sayfalarında yavaş yüklenme sorunu", col: 1, pri: "highest", who: ["emre", "burak"], due: -2, pts: 5, labels: ["hata", "performans"], desc: "Blog listesi 4 saniyede açılıyor. Görseller optimize edilmeli ve sayfalama eklenmeli.", comments: [["burak", "Görselleri WebP'ye çevirdim, şimdi sorguya bakıyorum."]] },
-  { title: "KVKK aydınlatma metnini güncelle", col: 2, pri: "high", who: ["elif"], due: 1, pts: 2, labels: ["hukuk"] },
+  { title: "KVKK aydınlatma metnini güncelle", col: 2, pri: "high", who: ["elif", "ayse"], due: 1, pts: 2, labels: ["hukuk"] },
   { title: "Çerez onay penceresi", col: 3, pri: "medium", who: ["emre"], pts: 3, labels: ["hukuk"], doneAgo: 2 },
   { title: "Ürün karşılaştırma tablosu", col: 0, pri: "medium", who: [], due: 12, pts: 5, labels: ["tasarım"] },
   { title: "İngilizce sürüm için çeviri akışı", col: 0, pri: "low", who: ["elif"], pts: 8, labels: ["içerik"] },
@@ -60,7 +60,7 @@ const web: Seed[] = [
   { title: "404 sayfası", col: 3, pri: "lowest", who: ["ismail"], pts: 1, labels: ["tasarım"], doneAgo: 16 },
   { title: "Bülten aboneliği entegrasyonu", col: 3, pri: "medium", who: ["emre"], pts: 3, labels: ["entegrasyon"], doneAgo: 23 },
   { title: "Favicon ve sosyal paylaşım görselleri", col: 3, pri: "low", who: ["zeynep"], pts: 1, labels: ["tasarım"], doneAgo: 30 },
-  { title: "Canlıya çıkış kontrol listesi", col: 0, pri: "high", who: ["mehmet"], due: 14, pts: 3, labels: ["süreç"], check: [["DNS ayarları", false], ["SSL sertifikası", false], ["Yönlendirmeler", false]] },
+  { title: "Canlıya çıkış kontrol listesi", col: 0, pri: "high", who: ["mehmet", "ayse"], due: 14, pts: 3, labels: ["süreç"], check: [["DNS ayarları", false], ["SSL sertifikası", false], ["Yönlendirmeler", false]] },
   { title: "Eski blog yazılarını taşı", col: 1, pri: "low", who: ["ismail"], due: -1, pts: 5, labels: ["içerik"] },
 ];
 
@@ -75,11 +75,11 @@ const mob: Seed[] = [
   { title: "Uygulama mağazası ekran görüntüleri", col: 0, pri: "low", who: ["ismail"], due: 15, pts: 2, labels: ["pazarlama"] },
   { title: "Kullanıcı profili düzenleme", col: 3, pri: "medium", who: ["emre"], pts: 3, labels: ["ux"], doneAgo: 3 },
   { title: "Sipariş takibi ekranı", col: 2, pri: "high", who: ["elif"], due: 2, pts: 5, labels: ["ux"] },
-  { title: "Çökme raporlama aracı kurulumu", col: 3, pri: "high", who: ["burak"], pts: 2, labels: ["altyapı"], doneAgo: 8 },
+  { title: "Çökme raporlama aracı kurulumu", col: 3, pri: "high", who: ["burak", "ayse"], pts: 2, labels: ["altyapı"], doneAgo: 8 },
   { title: "Türkçe ve İngilizce dil dosyaları", col: 3, pri: "medium", who: ["ismail", "elif"], pts: 3, labels: ["içerik"], doneAgo: 11 },
   { title: "Push bildirim sunucusu", col: 0, pri: "medium", who: ["burak"], due: 20, pts: 8, labels: ["altyapı"] },
   { title: "Kampanya kodu girişi", col: 0, pri: "medium", who: [], due: 8, pts: 3, labels: ["ödeme"] },
-  { title: "Beta test kullanıcı geri bildirimleri", col: 1, pri: "medium", who: ["mehmet"], due: 2, pts: 2, labels: ["süreç"] },
+  { title: "Beta test kullanıcı geri bildirimleri", col: 1, pri: "medium", who: ["mehmet", "ayse"], due: 2, pts: 2, labels: ["süreç"] },
   { title: "Uygulama açılış süresini kısalt", col: 0, pri: "high", who: ["emre"], due: 6, pts: 5, labels: ["performans"] },
   { title: "Ürün listesinde sonsuz kaydırma", col: 3, pri: "low", who: ["zeynep"], pts: 3, labels: ["ux"], doneAgo: 18 },
   { title: "Adres seçiminde harita", col: 0, pri: "lowest", who: [], pts: 5, labels: ["ux"] },
@@ -130,8 +130,7 @@ async function main() {
   for (const def of projectDefs) {
     const { projectId } = await projects.createProject(adminCtx, { key: def.key, name: def.name, description: def.description });
     const cols = await projects.projectColumns(projectId);
-    // Create in reverse so the first seed ends up on top of its column.
-    for (const sd of [...def.seeds].reverse()) {
+    for (const sd of def.seeds) {
       const reporter = sd.who[0] === "ismail" ? mehmet : adminCtx;
       const { taskId } = await tasks.createTask(reporter, {
         projectId,

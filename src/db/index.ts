@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import * as schema from "./schema";
@@ -24,6 +25,7 @@ async function open(): Promise<Db> {
   const { drizzle } = await import("drizzle-orm/pglite");
   const { migrate } = await import("drizzle-orm/pglite/migrator");
   const dir = process.env.PANO_DB ?? path.join(process.cwd(), ".data", "pglite");
+  if (!dir.includes("://")) mkdirSync(dir, { recursive: true });
   const db = drizzle(new PGlite(dir), { schema, casing: "snake_case" });
   await migrate(db, { migrationsFolder });
   return db;

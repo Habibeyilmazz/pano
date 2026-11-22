@@ -3,6 +3,7 @@ import { addDays, today, weekStart } from "@/lib/dates";
 import { fold } from "@/lib/fold";
 import { catalogs, makeI18n } from "@/lib/i18n";
 import * as account from "@/server/account";
+import * as admin from "@/server/admin";
 import { exportCsv } from "@/server/export";
 import * as notifications from "@/server/notifications";
 import * as projects from "@/server/projects";
@@ -70,6 +71,21 @@ describe("moving cards", () => {
     const board = await projects.getBoard(C.ctx.admin, "WEB");
     const col = board.tasks.filter((t) => t.columnId === C.cols[1].id);
     expect(col.every((t, i) => i === 0 || t.position > col[i - 1].position)).toBe(true);
+  });
+});
+
+describe("aggregates on the board and roles", () => {
+  it("counts checklist items, comments and role holders per row", async () => {
+    const { taskId, key } = await tasks.createTask(C.ctx.admin, { projectId: C.projectId, title: "Sayılar" });
+    await tasks.addChecklistItem(C.ctx.admin, { taskId, text: "bir" });
+    await tasks.addChecklistItem(C.ctx.admin, { taskId, text: "iki" });
+    const items = (await tasks.getTaskDetail(C.ctx.admin, key)).checklist;
+    await tasks.toggleChecklistItem(C.ctx.admin, { itemId: items[0].id, done: true });
+    await tasks.addComment(C.ctx.admin, { taskId, body: "not" });
+    const card = (await projects.getBoard(C.ctx.admin, "WEB")).tasks.find((t) => t.id === taskId)!;
+    expect(card).toMatchObject({ checklistTotal: 2, checklistDone: 1, commentCount: 1 });
+    const roles = await admin.listRoles(C.ctx.admin);
+    expect(roles.find((r) => r.builtin === "member")!.users).toBe(2);
   });
 });
 

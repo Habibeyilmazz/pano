@@ -76,6 +76,11 @@ export const tr = {
     newPassword: "Yeni parola",
     changePassword: "Parolayı değiştir",
     tagline: "Kim neyle uğraşıyor, sırada ne var, ne bitti: hepsi tek panoda.",
+    sample: {
+      who: ["Zeynep D.", "Emre Ş.", "Elif Ç."],
+      now: ["Ana sayfa tasarımı", "Android 15 testi", "Sipariş takibi"],
+      next: ["Karşılaştırma tablosu", "Açılış süresi", "Sürüm notları"],
+    },
   },
   errors: {
     generic: "Bir şeyler ters gitti. Sayfayı yenileyip tekrar deneyin.",
@@ -422,6 +427,5 @@ export const tr = {
     search: "Aramaya git",
     help: "Bu yardımı aç",
     close: "Pencereyi ya da görevi kapat",
-    myWork: "İşlerime git",
   },
 };

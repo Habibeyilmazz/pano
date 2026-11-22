@@ -14,7 +14,7 @@ import {
   passwordSchema,
   sha256,
 } from "./account";
-import { need, type Ctx } from "./ctx";
+import { byName, need, type Ctx } from "./ctx";
 
 const INVITE_DAYS = 7;
 
@@ -69,7 +69,7 @@ export async function listUsers(ctx: Ctx) {
     })
     .from(s.users)
     .where(eq(s.users.workspaceId, ctx.workspaceId))
-    .orderBy(desc(s.users.active), s.users.name);
+    .then((rows) => rows.sort((a, b) => Number(b.active) - Number(a.active) || byName(a, b)));
 }
 
 const credentialSchema = z.discriminatedUnion("mode", [
@@ -180,7 +180,7 @@ export async function resetPassword(ctx: Ctx, input: unknown) {
 export async function listRoles(ctx: Ctx) {
   const db = await getDb();
   const rows = await db
-    .select({ role: s.roles, users: sql<number>`(select count(*)::int from ${s.users} u where u.role_id = ${s.roles.id} and u.active)` })
+    .select({ role: s.roles, users: sql<number>`(select count(*)::int from ${s.users} u where u.role_id = ${s.roles}.id and u.active)` })
     .from(s.roles)
     .where(eq(s.roles.workspaceId, ctx.workspaceId))
     .orderBy(sql`${s.roles.builtin} is null`, s.roles.createdAt);

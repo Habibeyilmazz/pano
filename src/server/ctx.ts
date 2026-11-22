@@ -5,6 +5,10 @@ import { isPerm, type Perm } from "@/lib/perms";
 
 export type Locale = "tr" | "en";
 
+const collator = new Intl.Collator("tr-TR");
+/** Turkish alphabetical order (the database collation would put "İ" after "Z"). */
+export const byName = <T extends { name: string }>(a: T, b: T) => collator.compare(a.name, b.name);
+
 /** Everything a service needs to know about the caller. Built fresh per request from the DB. */
 export type Ctx = {
   userId: string;
@@ -63,11 +67,11 @@ export async function visibleProjects(ctx: Ctx, db?: Db) {
           ? undefined
           : or(
               eq(s.projects.restricted, false),
-              sql`exists (select 1 from ${s.projectMembers} pm where pm.project_id = ${s.projects.id} and pm.user_id = ${ctx.userId})`,
+              sql`exists (select 1 from ${s.projectMembers} pm where pm.project_id = ${s.projects}.id and pm.user_id = ${ctx.userId})`,
             ),
       ),
     )
-    .orderBy(s.projects.name);
+    .then((rows) => rows.sort(byName));
 }
 
 export async function visibleProjectIds(ctx: Ctx, db?: Db) {
@@ -94,7 +98,7 @@ export async function projectPeople(ctx: Ctx, projectId: string) {
     .from(s.users)
     .innerJoin(s.roles, eq(s.roles.id, s.users.roleId))
     .where(and(eq(s.users.workspaceId, ctx.workspaceId), eq(s.users.active, true)))
-    .orderBy(s.users.name);
+    .then((rows) => rows.sort(byName));
   if (!project.restricted) return people.map(({ perms: _p, ...u }) => u);
   const members = await db
     .select({ userId: s.projectMembers.userId })
@@ -104,6 +108,15 @@ export async function projectPeople(ctx: Ctx, projectId: string) {
   return people
     .filter((u) => ids.has(u.id) || u.perms.includes("projects.manage") || u.perms.includes("users.manage"))
     .map(({ perms: _p, ...u }) => u);
+}
+
+export async function activeUsers(ctx: Ctx) {
+  const db = await getDb();
+  const rows = await db
+    .select({ id: s.users.id, name: s.users.name })
+    .from(s.users)
+    .where(and(eq(s.users.workspaceId, ctx.workspaceId), eq(s.users.active, true)));
+  return rows.sort(byName);
 }
 
 export async function usersByIds(ctx: Ctx, ids: string[]) {

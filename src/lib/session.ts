@@ -1,7 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { AppError } from "./errors";
 import { userIdForSession } from "@/server/account";
 import { loadCtx, type Ctx, type Locale } from "@/server/ctx";
 
@@ -34,4 +35,14 @@ export async function requireCtx(): Promise<Ctx> {
 export async function clientIp() {
   const h = await headers();
   return h.get("x-forwarded-for")?.split(",")[0].trim() || h.get("x-real-ip") || "local";
+}
+
+/** Page helper: a service's not_found/forbidden becomes the 404 page (never reveal that something exists). */
+export async function orNotFound<T>(p: Promise<T>): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof AppError && (e.code === "not_found" || e.code === "forbidden")) notFound();
+    throw e;
+  }
 }

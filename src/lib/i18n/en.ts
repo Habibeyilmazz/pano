@@ -77,6 +77,11 @@ export const en: typeof tr = {
     newPassword: "New password",
     changePassword: "Change password",
     tagline: "Who is working on what, what is next, what is done: all on one board.",
+    sample: {
+      who: ["Zeynep D.", "Emre Ş.", "Elif Ç."],
+      now: ["Home page design", "Android 15 testing", "Order tracking"],
+      next: ["Comparison table", "Startup time", "Release notes"],
+    },
   },
   errors: {
     generic: "Something went wrong. Reload the page and try again.",
@@ -423,6 +428,5 @@ export const en: typeof tr = {
     search: "Go to search",
     help: "Open this help",
     close: "Close a dialog or task",
-    myWork: "Go to my work",
   },
 };

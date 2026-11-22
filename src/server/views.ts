@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lt, ne, sql } from "drizzl
 import { getDb, schema as s } from "@/db";
 import { addDays, today, weekStart, weekStartInstant } from "@/lib/dates";
 import { fail } from "@/lib/errors";
-import { need, visibleProjectIds, type Ctx } from "./ctx";
+import { byName, need, visibleProjectIds, type Ctx } from "./ctx";
 
 const PRIORITY_RANK: Record<string, number> = { highest: 0, high: 1, medium: 2, low: 3, lowest: 4 };
 const RECENT_DONE_DAYS = 14;
@@ -90,7 +90,7 @@ async function activePeople(ctx: Ctx, userIds?: string[]) {
         userIds ? inArray(s.users.id, userIds) : undefined,
       ),
     )
-    .orderBy(s.users.name);
+    .then((rows) => rows.sort(byName));
 }
 
 /** One row per person: what they are doing now, what is next, what they finished this week. */
@@ -119,8 +119,8 @@ export async function person(ctx: Ctx, userId: string) {
             type: s.activities.type,
             data: s.activities.data,
             createdAt: s.activities.createdAt,
-            taskKey: sql<string | null>`(select p.key || '-' || t.number from ${s.tasks} t join ${s.projects} p on p.id = t.project_id where t.id = ${s.activities.taskId})`,
-            taskTitle: sql<string | null>`(select t.title from ${s.tasks} t where t.id = ${s.activities.taskId})`,
+            taskKey: sql<string | null>`(select p.key || '-' || t.number from ${s.tasks} t join ${s.projects} p on p.id = t.project_id where t.id = ${s.activities}.task_id)`,
+            taskTitle: sql<string | null>`(select t.title from ${s.tasks} t where t.id = ${s.activities}.task_id)`,
           })
           .from(s.activities)
           .where(and(eq(s.activities.actorId, userId), eq(s.activities.workspaceId, ctx.workspaceId), inArray(s.activities.projectId, visible)))
@@ -128,7 +128,13 @@ export async function person(ctx: Ctx, userId: string) {
           .limit(30)
       : [],
   ]);
-  return { user: u!, ...group(items), activity };
+  const [columns, people] = await Promise.all([
+    visible.length
+      ? db.select({ id: s.columns.id, name: s.columns.name, defaultKey: s.columns.defaultKey }).from(s.columns).where(inArray(s.columns.projectId, visible))
+      : [],
+    db.select({ id: s.users.id, name: s.users.name }).from(s.users).where(eq(s.users.workspaceId, ctx.workspaceId)),
+  ]);
+  return { user: u!, ...group(items), activity, columns, people };
 }
 
 export async function dashboard(ctx: Ctx, projectId?: string) {
@@ -168,7 +174,7 @@ export async function dashboard(ctx: Ctx, projectId?: string) {
         title: s.tasks.title,
         priority: s.tasks.priority,
         dueDate: s.tasks.dueDate,
-        assignees: sql<string[]>`coalesce((select array_agg(u.name order by u.name) from ${s.taskAssignees} a join ${s.users} u on u.id = a.user_id where a.task_id = ${s.tasks.id}), '{}')`,
+        assignees: sql<string[]>`coalesce((select array_agg(u.name order by u.name) from ${s.taskAssignees} a join ${s.users} u on u.id = a.user_id where a.task_id = ${s.tasks}.id), '{}')`,
       })
       .from(s.tasks)
       .innerJoin(s.projects, eq(s.projects.id, s.tasks.projectId))
