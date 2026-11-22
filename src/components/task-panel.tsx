@@ -105,6 +105,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
   async function save(patch: Record<string, unknown>) {
     const r = await run(() => updateTaskAction({ taskId: t.id, version, ...patch }));
     if (r?.ok) setLocalVersion(r.data.version);
+    return !!r?.ok;
   }
 
   const column = detail.columns.find((c) => c.id === t.columnId);
@@ -198,7 +199,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
           <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="min-w-0 space-y-6">
 
-              <Description key={t.description} text={t.description} editable={editable} people={people} onSave={(description) => save({ description })} pending={pending} />
+              <Description text={t.description} editable={editable} people={people} onSave={(description) => save({ description })} pending={pending} />
 
               <section aria-labelledby="checklist-h">
                 <h3 id="checklist-h" className="mb-2 flex items-center gap-2 section-title">
@@ -489,7 +490,7 @@ export function TaskPanel({ detail, me, perms }: { detail: TaskDetail; me: strin
   );
 }
 
-function Description({ text, editable, people, onSave, pending }: { text: string; editable: boolean; people: Person[]; onSave: (v: string) => void; pending: boolean }) {
+function Description({ text, editable, people, onSave, pending }: { text: string; editable: boolean; people: Person[]; onSave: (v: string) => Promise<boolean>; pending: boolean }) {
   const { m } = useI18n();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(text);
@@ -501,7 +502,13 @@ function Description({ text, editable, people, onSave, pending }: { text: string
           {m.task.description}
         </h3>
         {editable && !editing && (
-          <button className="btn btn-ghost btn-sm ml-auto" onClick={() => setEditing(true)}>
+          <button
+            className="btn btn-ghost btn-sm ml-auto"
+            onClick={() => {
+              setDraft(text);
+              setEditing(true);
+            }}
+          >
             {m.common.edit}
           </button>
         )}
@@ -541,19 +548,16 @@ function Description({ text, editable, people, onSave, pending }: { text: string
             <button
               className="btn btn-primary btn-sm"
               disabled={pending}
-              onClick={() => {
-                if (draft !== text) onSave(draft);
-                setEditing(false);
+              // The editor stays open until the save lands, so a refused save (conflict) keeps the draft.
+              onClick={async () => {
+                if (draft === text || (await onSave(draft))) setEditing(false);
               }}
             >
               {m.common.save}
             </button>
             <button
               className="btn btn-sm"
-              onClick={() => {
-                setDraft(text);
-                setEditing(false);
-              }}
+              onClick={() => setEditing(false)}
             >
               {m.common.cancel}
             </button>
