@@ -155,6 +155,17 @@ describe("sign-in protection", () => {
     await expectCode(account.login({ email, password: "yanlis" }, "ip-x"), "locked");
     await expectCode(account.login({ email, password: PW }, "ip-y"), "locked");
   });
+  it("limits by the IP the proxy saw, not one the client wrote", () => {
+    expect(account.clientIpFrom("6.6.6.6, 10.0.0.7")).toBe("10.0.0.7");
+    expect(account.clientIpFrom("6.6.6.6, 203.0.113.9, 10.0.0.2", 2)).toBe("203.0.113.9");
+    expect(account.clientIpFrom("10.0.0.7")).toBe("10.0.0.7");
+    expect(account.clientIpFrom(null)).toBe("local");
+  });
+  it("limits sign-ups per IP", async () => {
+    for (let i = 0; i < 10; i++) account.ipLimited("signup:198.51.100.1", 10);
+    await expectCode(account.signupCompany({ company: "Spam", name: "a", email: "spam@x.test", password: PW, locale: "tr" }, "198.51.100.1"), "locked");
+    await expectCode(account.login({ email: "nobody@x.test", password: "x" }, "198.51.100.1"), "bad_credentials");
+  });
   it("rejects weak passwords at sign-up", async () => {
     await expectCode(account.signupCompany({ company: "Zayıf", name: "a", email: "weak@x.test", password: "sadeceharf", locale: "tr" }), "weak_password");
     await expectCode(account.signupCompany({ company: "Zayıf", name: "a", email: "weak@x.test", password: "123456789012", locale: "tr" }), "weak_password");

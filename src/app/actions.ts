@@ -50,7 +50,7 @@ async function origin() {
 // ---- account ----
 
 export async function signupAction(input: unknown) {
-  const r = await guard(() => account.signupCompany(input));
+  const r = await guard(async () => account.signupCompany(input, await clientIp()));
   if (r.ok) await setSessionCookie(r.data.token, r.data.expiresAt);
   return r.ok ? { ok: true as const, data: null } : r;
 }

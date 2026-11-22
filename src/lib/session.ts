@@ -3,7 +3,7 @@ import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { AppError } from "./errors";
-import { userIdForSession } from "@/server/account";
+import { clientIpFrom, userIdForSession } from "@/server/account";
 import { loadCtx, type Ctx, type Locale } from "@/server/ctx";
 
 export const SESSION_COOKIE = "pano_session";
@@ -33,8 +33,7 @@ export async function requireCtx(): Promise<Ctx> {
 }
 
 export async function clientIp() {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0].trim() || h.get("x-real-ip") || "local";
+  return clientIpFrom((await headers()).get("x-forwarded-for"));
 }
 
 /** Page helper: a service's not_found/forbidden becomes the 404 page (never reveal that something exists). */

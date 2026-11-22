@@ -125,11 +125,11 @@ Production uses a real Postgres via `DATABASE_URL`; migrations run on startup.
 docker compose up --build     # app on http://localhost:4500 + postgres:17
 ```
 
-Then open `/signup` to create your company (the demo seed is not run in Docker). Configuration (see `.env.example`): `DATABASE_URL`, `APP_TZ` (default `Europe/Istanbul`), `COOKIE_SECURE` (default `true`; put HTTPS in front of the app). Change `POSTGRES_PASSWORD` for anything beyond a local try-out.
+Then open `/signup` to create your company (the demo seed is not run in Docker). Configuration (see `.env.example`): `DATABASE_URL`, `APP_TZ` (default `Europe/Istanbul`), `COOKIE_SECURE` (default `true`; put HTTPS in front of the app), `PROXY_HOPS` (default `1`: the number of reverse proxies in front of the app that append to `X-Forwarded-For`). Change `POSTGRES_PASSWORD` for anything beyond a local try-out.
 
 ## Limits in v0.1
 
-- The per-IP sign-in limiter lives in process memory: fine for one app instance; use a shared store when running several. Behind a proxy, make sure `X-Forwarded-For` is set by the proxy.
+- The per-IP limiters (sign-in: 30 attempts, sign-up: 10 companies per 15 minutes) live in process memory: fine for one app instance; use a shared store when running several. They read the client IP from the right end of `X-Forwarded-For` (`PROXY_HOPS`), so run the app behind a reverse proxy that appends to that header; exposed directly, a client can pick its own IP and only the per-account lockout applies.
 - One time zone per installation (`APP_TZ`) for due dates and week boundaries.
 - No email delivery yet (links are copied by the admin).
 

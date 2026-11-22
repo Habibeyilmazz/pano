@@ -106,8 +106,9 @@ const signupSchema = z.object({
   locale: localeSchema,
 });
 
-export async function signupCompany(input: unknown) {
+export async function signupCompany(input: unknown, ip = "local") {
   const data = parse(signupSchema, input);
+  if (ipLimited(`signup:${ip}`, 10)) fail("locked");
   return transaction(async (tx) => {
     const [taken] = await tx.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, data.email));
     if (taken) fail("email_taken");
@@ -128,21 +129,33 @@ export async function signupCompany(input: unknown) {
   });
 }
 
+/**
+ * The client IP from X-Forwarded-For: the entry appended by the outermost of PROXY_HOPS trusted
+ * proxies, counted from the right. The leftmost entry is whatever the client sent, so never that.
+ * Next.js fills the header from the socket when the request has none.
+ */
+export function clientIpFrom(xff: string | null, hops = Number(process.env.PROXY_HOPS ?? 1)) {
+  const list = (xff ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  return list[Math.max(0, list.length - Math.max(1, hops))] ?? "local";
+}
+
+const WINDOW = 15 * 60e3;
 const ipHits = new Map<string, number[]>();
 // shortcut: per-process memory, fine for one app instance; move to the DB or Redis when scaling out.
-function ipLimited(ip: string) {
+export function ipLimited(key: string, max = 30) {
   const now = Date.now();
-  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < 15 * 60e3);
+  if (ipHits.size > 10_000) for (const [k, v] of ipHits) if (now - v[v.length - 1] >= WINDOW) ipHits.delete(k);
+  const hits = (ipHits.get(key) ?? []).filter((t) => now - t < WINDOW);
   hits.push(now);
-  ipHits.set(ip, hits);
-  return hits.length > 30;
+  ipHits.set(key, hits);
+  return hits.length > max;
 }
 
 const loginSchema = z.object({ email: emailSchema, password: z.string().min(1).max(200) });
 
 export async function login(input: unknown, ip = "local") {
   const data = parse(loginSchema, input);
-  if (ipLimited(ip)) fail("locked");
+  if (ipLimited(`login:${ip}`)) fail("locked");
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, data.email));
   if (u?.lockedUntil && u.lockedUntil > new Date()) fail("locked");
