@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { getDb, transaction, schema as s } from "@/db";
 import { addDays, daysBetween, today } from "@/lib/dates";
@@ -119,12 +120,14 @@ export async function completeSprint(ctx: Ctx, input: unknown) {
   });
 }
 
-export type BurndownTask = { estimate: number | null; joinedAt: Date; completedAt: Date | null };
+/** `doneChanges`: moves into (true) or out of (false) a done column, oldest first, from the task history. */
+export type BurndownTask = { estimate: number | null; joinedAt: Date; completedAt: Date | null; doneChanges?: { at: Date; done: boolean }[] };
 
 /**
  * Remaining work per day (app time zone) from the start date to the end date, or to today when the
- * sprint runs over. A task counts from the day it joined the sprint until the day it was finished;
- * tasks taken out of the sprint are not counted at all. Points when any task has an estimate, else tasks.
+ * sprint runs over. A task counts from the day it joined the sprint on every day it was not done at
+ * day's end (a task reopened later still counts as done on the days it was); tasks taken out of the
+ * sprint are not counted at all. Points when any task has an estimate, else tasks.
  */
 export function burndown(sp: { startDate: string; endDate: string }, tasks: BurndownTask[], now = new Date()) {
   const t = today(0, now);
@@ -133,8 +136,15 @@ export function burndown(sp: { startDate: string; endDate: string }, tasks: Burn
     size: unit === "points" ? (x.estimate ?? 0) : 1,
     joined: today(0, x.joinedAt),
     done: x.completedAt ? today(0, x.completedAt) : null,
+    changes: (x.doneChanges ?? []).map((c) => ({ day: today(0, c.at), done: c.done })),
   }));
-  const remainingOn = (d: string) => rows.reduce((n, r) => n + (r.joined <= d && !(r.done && r.done <= d) ? r.size : 0), 0);
+  const doneOn = (r: (typeof rows)[number], d: string) => {
+    // No moves recorded (e.g. created in a done column): completedAt is the whole story.
+    if (!r.changes.length) return !!r.done && r.done <= d;
+    const last = r.changes.findLast((c) => c.day <= d);
+    return last ? last.done : !r.changes[0].done;
+  };
+  const remainingOn = (d: string) => rows.reduce((n, r) => n + (r.joined <= d && !doneOn(r, d) ? r.size : 0), 0);
   const total = rows.reduce((n, r) => n + r.size, 0);
   const span = daysBetween(sp.startDate, sp.endDate);
   const length = daysBetween(sp.startDate, t > sp.endDate ? t : sp.endDate) + 1;
@@ -147,7 +157,7 @@ export function burndown(sp: { startDate: string; endDate: string }, tasks: Burn
   });
   const remaining = remainingOn(t);
   const idealNow = t < sp.startDate ? commitment : ideal(daysBetween(sp.startDate, t));
-  const done = rows.filter((r) => r.done).length;
+  const done = rows.filter((r) => doneOn(r, t)).length;
   return { unit, total, remaining, done, count: rows.length, days, behind: Math.round((remaining - idealNow) * 10) / 10 };
 }
 
@@ -164,6 +174,7 @@ export async function activeSprintReports(ctx: Ctx, projectIds: string[]) {
   if (!active.length) return [];
   const rows = await db
     .select({
+      id: s.tasks.id,
       sprintId: s.tasks.sprintId,
       estimate: s.tasks.estimate,
       completedAt: s.tasks.completedAt,
@@ -173,13 +184,40 @@ export async function activeSprintReports(ctx: Ctx, projectIds: string[]) {
     })
     .from(s.tasks)
     .where(and(eq(s.tasks.workspaceId, ctx.workspaceId), inArray(s.tasks.sprintId, active.map((a) => a.sprint.id))));
+  // Moves across the done line, so a task finished and reopened keeps its done days. Judged by the
+  // columns' current category; a deleted column's moves are skipped.
+  const fc = alias(s.columns, "fc");
+  const tc = alias(s.columns, "tc");
+  const changes = rows.length
+    ? await db
+        .select({ taskId: s.activities.taskId, at: s.activities.createdAt, done: sql<boolean>`${tc.category} = 'done'` })
+        .from(s.activities)
+        .innerJoin(fc, sql`${fc.id}::text = ${s.activities.data}->>'from'`)
+        .innerJoin(tc, sql`${tc.id}::text = ${s.activities.data}->>'to'`)
+        .where(
+          and(
+            eq(s.activities.workspaceId, ctx.workspaceId),
+            eq(s.activities.type, "moved"),
+            inArray(s.activities.taskId, rows.map((r) => r.id)),
+            sql`(${fc.category} = 'done') <> (${tc.category} = 'done')`,
+          ),
+        )
+        .orderBy(asc(s.activities.createdAt))
+    : [];
+  const byTask = new Map<string, { at: Date; done: boolean }[]>();
+  for (const c of changes) byTask.set(c.taskId!, [...(byTask.get(c.taskId!) ?? []), { at: c.at, done: c.done }]);
   return active.map(({ sprint, projectKey, projectName }) => ({
     sprint,
     projectKey,
     projectName,
     ...burndown(
       { startDate: sprint.startDate!, endDate: sprint.endDate! },
-      rows.filter((r) => r.sprintId === sprint.id).map((r) => ({ estimate: r.estimate, completedAt: r.completedAt, joinedAt: new Date(r.joinedAt) })),
+      rows.filter((r) => r.sprintId === sprint.id).map((r) => ({
+        estimate: r.estimate,
+        completedAt: r.completedAt,
+        joinedAt: new Date(r.joinedAt),
+        doneChanges: byTask.get(r.id),
+      })),
     ),
   }));
 }

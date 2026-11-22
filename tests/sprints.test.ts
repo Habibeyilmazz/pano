@@ -157,6 +157,22 @@ describe("burndown", () => {
     expect(r.behind).toBe(1);
   });
 
+  it("a task finished and reopened counts as done on the days it was done", () => {
+    const joinedAt = at("2026-11-01T09:00:00Z");
+    const r = sprints.burndown(
+      { startDate: "2026-11-09", endDate: "2026-11-13" },
+      [
+        // Done on the 10th, reopened on the 12th: open again now, so completedAt is null.
+        { estimate: 3, joinedAt, completedAt: null, doneChanges: [{ at: at("2026-11-10T10:00:00Z"), done: true }, { at: at("2026-11-12T10:00:00Z"), done: false }] },
+        // Created done, reopened on the 10th, done again the same day: done on every day.
+        { estimate: 2, joinedAt, completedAt: at("2026-11-10T15:00:00Z"), doneChanges: [{ at: at("2026-11-10T09:00:00Z"), done: false }, { at: at("2026-11-10T15:00:00Z"), done: true }] },
+      ],
+      at("2026-11-13T12:00:00Z"),
+    );
+    expect(r.days.map((d) => d.remaining)).toEqual([3, 0, 0, 3, 3]);
+    expect({ remaining: r.remaining, done: r.done }).toEqual({ remaining: 3, done: 1 });
+  });
+
   it("Overview shows each running sprint of the projects you can see, using task history for scope added later", async () => {
     const D = await makeCompany();
     const db = await getDb();
@@ -181,6 +197,16 @@ describe("burndown", () => {
     expect(report.map((r) => r.sprint.name)).toEqual(["Koşan"]);
     expect(report[0].days.slice(0, 3).map((d) => d.remaining)).toEqual([7, 10, 8]);
     expect(report[0]).toMatchObject({ unit: "points", total: 10, remaining: 8, done: 1, count: 3, projectKey: "WEB" });
+
+    // Finished yesterday and reopened today: yesterday stays done (read from the move history).
+    await tasks.moveTask(D.ctx.admin, { taskId: inSprint.taskId, columnId: D.cols[3].id, index: 0, version: await versionOf(D.ctx.admin, inSprint.key) });
+    await db
+      .update(s.activities)
+      .set({ createdAt: new Date(Date.now() - 864e5) })
+      .where(and(eq(s.activities.taskId, inSprint.taskId), eq(s.activities.type, "moved")));
+    await tasks.moveTask(D.ctx.admin, { taskId: inSprint.taskId, columnId: D.cols[1].id, index: 0, version: await versionOf(D.ctx.admin, inSprint.key) });
+    const reopened = (await views.dashboard(D.ctx.manager, D.projectId)).sprints[0];
+    expect(reopened.days.slice(0, 3).map((d) => d.remaining)).toEqual([7, 5, 8]);
     expect((await views.dashboard(D.ctx.admin)).sprints.map((r) => r.sprint.name)).toEqual(["Gizli sprint", "Koşan"]);
 
     // Someone who may view reports but is not on the restricted project does not see its sprint.
