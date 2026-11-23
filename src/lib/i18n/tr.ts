@@ -240,7 +240,6 @@ export const tr = {
     createTitle: "Yeni görev",
     createIn: "Sütun",
     createSubmit: "Görevi oluştur",
-    alsoAssignMe: "Bana ata",
     readOnly: "Bu görevi yalnızca görüntüleyebilirsiniz.",
     commentsCount: { one: "{n} yorum", other: "{n} yorum" },
     createdAt: "{date} tarihinde açıldı",

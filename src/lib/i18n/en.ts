@@ -241,7 +241,6 @@ export const en: typeof tr = {
     createTitle: "New task",
     createIn: "Column",
     createSubmit: "Create task",
-    alsoAssignMe: "Assign to me",
     readOnly: "You can only view this task.",
     commentsCount: { one: "{n} comment", other: "{n} comments" },
     createdAt: "Opened {date}",

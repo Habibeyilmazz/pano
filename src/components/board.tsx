@@ -629,6 +629,8 @@ function CreateTaskDialog({
   const { m, fmt } = i;
   const { run, pending } = useRun();
   const toast = useToast();
+  // Same rule the server enforces: others need tasks.assign_others, yourself needs tasks.assign_self.
+  const assignable = board.people.filter((p) => (p.id === me ? perms.assignSelf : perms.assignOthers));
   return (
     <Dialog open={open} onClose={onClose} title={m.task.createTitle} wide>
       <form
@@ -649,7 +651,7 @@ function CreateTaskDialog({
               .split(",")
               .map((l) => l.trim())
               .filter(Boolean),
-            assigneeIds: fd.get("assignMe") === "on" ? [me] : [],
+            assigneeIds: fd.getAll("assignee").map(String),
             sprintId: String(fd.get("sprintId") ?? "") || null,
           };
           const r = await run(() => createTaskAction(input));
@@ -723,11 +725,20 @@ function CreateTaskDialog({
           </label>
           <input id="t-labels" name="labels" className="input" maxLength={300} />
         </div>
-        {perms.assignSelf && (
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input type="checkbox" name="assignMe" className="size-4 accent-[var(--brand)]" />
-            {m.task.alsoAssignMe}
-          </label>
+        {assignable.length > 0 && (
+          <fieldset className="sm:col-span-2">
+            <legend className="label">
+              {m.task.assignees} <span className="font-normal text-ink-3">({m.common.optional})</span>
+            </legend>
+            <div className="flex max-h-40 flex-wrap gap-x-4 gap-y-2 overflow-y-auto">
+              {assignable.map((p) => (
+                <label key={p.id} className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="assignee" value={p.id} className="size-4 accent-[var(--brand)]" />
+                  {p.id === me ? `${p.name} (${m.common.you})` : p.name}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         )}
         <div className="flex justify-end gap-2 sm:col-span-2">
           <button type="button" className="btn" onClick={onClose}>
