@@ -6,6 +6,7 @@ import { getDb, transaction, schema as s, type Tx } from "@/db";
 import { fail } from "@/lib/errors";
 import { BUILTIN_ROLES, type BuiltinRole } from "@/lib/perms";
 import type { Ctx } from "./ctx";
+import { GENERAL_PROJECT, insertProject } from "./projects";
 
 const scryptAsync = promisify(scrypt) as (pw: string, salt: Buffer, len: number, o: object) => Promise<Buffer>;
 const LOG_N = Number(process.env.SCRYPT_LOG_N ?? 17); // OWASP: N=2^17, r=8, p=1
@@ -125,6 +126,7 @@ export async function signupCompany(input: unknown, ip = "local") {
         locale: data.locale,
       })
       .returning();
+    await insertProject(tx, w.id, { key: GENERAL_PROJECT.key, ...GENERAL_PROJECT[data.locale] });
     return { userId: u.id, workspaceId: w.id, ...(await createSession(u.id, tx)) };
   });
 }

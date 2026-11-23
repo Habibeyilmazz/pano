@@ -72,9 +72,22 @@ describe("restricted projects", () => {
   it("are invisible to non-members, by key and by id", async () => {
     await expectCode(projects.getBoard(C.ctx.member, "SEC"), "not_found");
     await expectCode(tasks.createTask(C.ctx.member, { projectId: C.secretId, title: "x" }), "not_found");
-    expect((await projects.listProjects(C.ctx.member)).map((p) => p.key)).toEqual(["WEB"]);
-    expect((await projects.listProjects(C.ctx.member2)).map((p) => p.key).sort()).toEqual(["SEC", "WEB"]);
-    expect((await projects.listProjects(C.ctx.manager)).length).toBe(2);
+    expect((await projects.listProjects(C.ctx.member)).map((p) => p.key).sort()).toEqual(["GEN", "WEB"]);
+    expect((await projects.listProjects(C.ctx.member2)).map((p) => p.key).sort()).toEqual(["GEN", "SEC", "WEB"]);
+    expect((await projects.listProjects(C.ctx.manager)).length).toBe(3);
+  });
+});
+
+describe("Genel İşler board", () => {
+  it("every new company starts with it, open to everyone, named in the founder's language", async () => {
+    const board = await projects.getBoard(C.ctx.member, "GEN");
+    expect(board.project.name).toBe("Genel İşler");
+    expect(board.columns.map((c) => c.category)).toEqual(["todo", "doing", "doing", "done"]);
+    await tasks.createTask(C.ctx.member, { projectId: board.project.id, title: "Kargoyu teslim al", assigneeIds: [C.ids.member2] });
+    expect((await projects.getBoard(C.ctx.member2, "GEN")).tasks.map((t) => t.title)).toEqual(["Kargoyu teslim al"]);
+
+    const en = await account.signupCompany({ company: "Acme", name: "Ann Lee", email: `ann-${Date.now()}@x.test`, password: PW, locale: "en" });
+    expect((await projects.listProjects(await ctxOf(en.userId))).map((p) => p.name)).toEqual(["General"]);
   });
 });
 

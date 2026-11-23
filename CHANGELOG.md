@@ -5,6 +5,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Genel İşler board.** Every new company starts with an open project, GEN ("Genel İşler", or "General" for an English sign-up), for work that belongs to no project. It is an ordinary project, so the board, My work, Team, sprints and CSV export all apply. Companies created before this change can make one under Projects. The demo seeds five such tasks.
+- **Assignees in the new task form.** Pick anyone you may assign (others need "Assign others") while creating the task, instead of only "Assign to me".
+
 ### Fixed (launch round)
 
 - **Burndown: a task finished and later reopened counted as remaining on every day**, so the chart rewrote the past (the days it was done jumped back up). `burndown()` now reads each task's moves across the done line from its history (`moved` activities whose from/to columns differ in being "done") and counts it done on the days it was done at day's end. Tasks with no recorded moves (created in a done column, seeded) still use `completedAt`. A pure test (done, reopened, re-done on one day) and a service test (moved to done yesterday, reopened today) were checked to fail without the fix. Judged by the columns' current category; moves through a since-deleted column are skipped.

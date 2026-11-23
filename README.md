@@ -52,7 +52,7 @@ All demo accounts are fictional and share the password **`PanoDemo2026`** (demo 
 | `ismail@ornek.test` | İsmail Doğan | Custom role "Stajyer" (intern) |
 | `selin@ornek.test` | Selin Arslan | Viewer (İzleyici), interface in English |
 
-The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB) and 40 tasks in Turkish at various states. WEB works in sprints (one completed, one running, one planned); MOB is a plain kanban board. You can also create your own company at `/signup`.
+The demo company "Örnek Yazılım A.Ş." has two projects (WEB, MOB), the built-in Genel İşler board (GEN) and 45 tasks in Turkish at various states. WEB works in sprints (one completed, one running, one planned); MOB is a plain kanban board. You can also create your own company at `/signup`.
 
 ### Trying it on your phone
 
@@ -69,6 +69,7 @@ COOKIE_SECURE=false npm start    # then open http://<your computer's IP>:4500 on
 - Company sign-up creates an isolated workspace; the first user is its admin.
 - Admins add users (name, email, role, language) and either get a one-time **invite link** (valid 7 days) or set a **temporary password** that must be changed at first sign-in. No email is sent in v0.1; the link is shown once to copy. `src/server/mail.ts` is the hook for SMTP.
 - Built-in roles **Admin**, **Manager**, **Member**, **Viewer** (read-only), and **custom roles** made by ticking permissions (see the matrix below).
+- Every new company starts with a **Genel İşler** board (GEN; "General" when the founder signs up in English) for work that belongs to no project: office, purchasing, HR. It is an ordinary project open to everyone, so it can be renamed or restricted like any other.
 - Projects can be **restricted** to selected people.
 - Deactivating a user ends their sessions immediately and keeps their history. Their open tasks become unassigned (each task's history says so), so the work shows up under the *Unassigned* filter; finished tasks keep their name. Admins can reset passwords (new link or temporary password). The **audit log** records user created, role changed, access turned off/on, password reset, role created/changed/deleted and task deleted.
 
@@ -275,7 +276,7 @@ Hepsi kurgusaldır ve aynı parolayı kullanır: **`PanoDemo2026`** (yalnızca d
 | `ismail@ornek.test` | İsmail Doğan | Özel rol "Stajyer" |
 | `selin@ornek.test` | Selin Arslan | İzleyici (salt okunur), arayüzü İngilizce |
 
-Demo şirketi "Örnek Yazılım A.Ş." iki proje (WEB, MOB) ve farklı durumlarda 40 görev içerir. WEB sprintlerle çalışır, MOB sade bir kanban panosudur. `/signup` adresinden kendi şirketinizi de açabilirsiniz.
+Demo şirketi "Örnek Yazılım A.Ş." iki proje (WEB, MOB), her şirkette hazır gelen Genel İşler panosu (GEN) ve farklı durumlarda 45 görev içerir. WEB sprintlerle çalışır, MOB sade bir kanban panosudur. `/signup` adresinden kendi şirketinizi de açabilirsiniz.
 
 ### Neler var
 

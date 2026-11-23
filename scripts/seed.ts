@@ -1,5 +1,5 @@
 /**
- * Demo data: a fictional company, "Örnek Yazılım A.Ş.", with 8 people, 2 projects and ~40 tasks.
+ * Demo data: a fictional company, "Örnek Yazılım A.Ş.", with 8 people, 2 projects plus the built-in Genel İşler board, and ~45 tasks.
  * Usage: npm run seed            (adds the demo company; refuses if it already exists)
  *        npm run seed -- --if-empty   (only when the database has no companies; used by npm run dev)
  * All names, emails and passwords are fictional and for local demos only.
@@ -9,7 +9,7 @@ import { getDb, schema as s } from "../src/db";
 import { addDays, today } from "../src/lib/dates";
 import * as account from "../src/server/account";
 import * as admin from "../src/server/admin";
-import { loadCtx } from "../src/server/ctx";
+import { getProject, loadCtx } from "../src/server/ctx";
 import * as projects from "../src/server/projects";
 import * as sprints from "../src/server/sprints";
 import * as tasks from "../src/server/tasks";
@@ -88,6 +88,15 @@ const mob: Seed[] = [
   { title: "Sürüm 2.4 notları", col: 0, pri: "low", who: ["elif"], due: 3, pts: 1, labels: ["içerik"] },
 ];
 
+// Company work outside any project, on the board every company starts with.
+const gen: Seed[] = [
+  { title: "Ofis internet sözleşmesini yenile", col: 0, pri: "medium", who: ["ayse"], due: 9, labels: ["ofis"] },
+  { title: "Yeni çalışan için bilgisayar ve hesaplar", col: 1, pri: "high", who: ["burak"], due: 2, labels: ["işe alım"], check: [["Dizüstü bilgisayar", true], ["E-posta hesabı", false], ["pano hesabı", false]] },
+  { title: "KVKK aydınlatma metnini güncelle", col: 0, pri: "high", who: ["mehmet"], due: 12, labels: ["hukuk"] },
+  { title: "Kasım fatura ödemeleri", col: 3, pri: "medium", who: ["ayse"], labels: ["muhasebe"], doneAgo: 2 },
+  { title: "Yılsonu ekip yemeği", col: 0, pri: "low", who: [], due: 18, labels: ["ofis"] },
+];
+
 async function main() {
   const db = await getDb();
   const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(s.workspaces);
@@ -126,11 +135,14 @@ async function main() {
   const projectDefs = [
     { key: "WEB", name: "Web Sitesi Yenileme", description: "Kurumsal web sitesinin yeni marka kimliğiyle baştan yapılması.", seeds: web },
     { key: "MOB", name: "Mobil Uygulama", description: "iOS ve Android müşteri uygulaması, sürüm 2.4.", seeds: mob },
+    { key: projects.GENERAL_PROJECT.key, name: "", description: "", seeds: gen }, // created at sign-up
   ];
   const t0 = today();
   const webTasks: { sd: Seed; taskId: string }[] = [];
   for (const def of projectDefs) {
-    const { projectId } = await projects.createProject(adminCtx, { key: def.key, name: def.name, description: def.description });
+    const projectId = def.seeds === gen
+      ? (await getProject(adminCtx, { key: def.key })).id
+      : (await projects.createProject(adminCtx, { key: def.key, name: def.name, description: def.description })).projectId;
     const cols = await projects.projectColumns(projectId);
     // A WIP limit on "In progress" so the board shows what an exceeded limit looks like.
     if (def.key === "WEB") await projects.updateColumn(adminCtx, { columnId: cols[1].id, name: null, category: "doing", wipLimit: 3 });

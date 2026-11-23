@@ -15,6 +15,27 @@ export const DEFAULT_COLUMNS = [
 
 export const CATEGORIES = ["todo", "doing", "done"] as const;
 
+/** Every new company gets this open board for work that belongs to no project (office, purchasing, HR…). */
+export const GENERAL_PROJECT = {
+  key: "GEN",
+  tr: { name: "Genel İşler", description: "Bir projeye ait olmayan işler: ofis, satın alma, İK ve günlük işler." },
+  en: { name: "General", description: "Work that belongs to no project: office, purchasing, HR and day-to-day tasks." },
+} as const;
+
+/** A project with the default columns. Callers check permissions and key uniqueness. */
+export async function insertProject(
+  tx: Tx,
+  workspaceId: string,
+  values: { key: string; name: string; description?: string; restricted?: boolean },
+) {
+  const [p] = await tx
+    .insert(s.projects)
+    .values({ workspaceId, ...values })
+    .returning();
+  await tx.insert(s.columns).values(DEFAULT_COLUMNS.map((c, i) => ({ ...c, workspaceId, projectId: p.id, position: i })));
+  return p;
+}
+
 export async function listProjects(ctx: Ctx) {
   const list = await visibleProjects(ctx);
   if (!list.length) return [];
@@ -68,13 +89,7 @@ export async function createProject(ctx: Ctx, input: unknown) {
       .from(s.projects)
       .where(and(eq(s.projects.workspaceId, ctx.workspaceId), eq(s.projects.key, data.key)));
     if (taken) fail("key_taken");
-    const [p] = await tx
-      .insert(s.projects)
-      .values({ workspaceId: ctx.workspaceId, key: data.key, name: data.name, description: data.description, restricted: data.restricted })
-      .returning();
-    await tx
-      .insert(s.columns)
-      .values(DEFAULT_COLUMNS.map((c, i) => ({ ...c, workspaceId: ctx.workspaceId, projectId: p.id, position: i })));
+    const p = await insertProject(tx, ctx.workspaceId, { key: data.key, name: data.name, description: data.description, restricted: data.restricted });
     await setMembers(tx, ctx, p.id, data.memberIds);
     return { projectId: p.id, key: p.key };
   });
